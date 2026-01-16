@@ -1,15 +1,23 @@
 import { Box, Edges } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
+import { useAtomValue } from "jotai";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
-  GameAction,
-  GameState,
+  activeFaceAtom,
+  currentBlockAtom,
+  gridsAtom,
+  isGameOverAtom,
+  levelAtom,
+  nextBlockAtom,
+  showGhostAtom,
+} from "../atoms/gameAtoms";
+import {
   GRID_HEIGHT,
   GRID_WIDTH,
   isValidMove,
-} from "../engine/gameReducer";
+} from "../engine/grid";
 import { TetrisBlock, TETROMINOS } from "../engine/TetrisBlock";
 
 const BLOCK_SIZE = 1;
@@ -17,11 +25,7 @@ const BOARD_WIDTH = GRID_WIDTH * BLOCK_SIZE;
 const BOARD_HEIGHT = GRID_HEIGHT * BLOCK_SIZE;
 
 // --- UI Components (non-R3F) ---
-const GameOverOverlay = ({
-  dispatch,
-}: {
-  dispatch: React.Dispatch<GameAction>;
-}) => {
+const GameOverOverlay = () => {
   const [showText, setShowText] = useState(true);
 
   useEffect(() => {
@@ -29,13 +33,8 @@ const GameOverOverlay = ({
     return () => clearInterval(blinker);
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === "Space") dispatch({ type: "START_GAME" });
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dispatch]);
+  // The keydown listener for restarting is now in GameController.tsx
+  // This component is now purely for display.
 
   const overlayStyle: React.CSSProperties = {
     position: "absolute",
@@ -72,7 +71,8 @@ const GameOverOverlay = ({
   );
 };
 
-const NextBlockPreview = ({ nextBlock }: { nextBlock: TetrisBlock | null }) => {
+const NextBlockPreview = () => {
+  const nextBlock = useAtomValue(nextBlockAtom);
   if (!nextBlock) return null;
 
   const previewStyle: React.CSSProperties = {
@@ -109,8 +109,8 @@ const NextBlockPreview = ({ nextBlock }: { nextBlock: TetrisBlock | null }) => {
           <ambientLight intensity={0.8} />
           <pointLight position={[10, 10, 10]} intensity={0.5} />
           <group scale={[0.9, 0.9, 0.9]}>
-            {shape.map((row, y) =>
-              row.map((cell, x) => {
+            {shape.map((row: (string | number)[], y: number) =>
+              row.map((cell: string | number, x: number) => {
                 if (cell !== 0) {
                   return (
                     <Box
@@ -186,7 +186,6 @@ const GameBoardFace = ({
 }) => {
   const groupRef = useRef<THREE.Group>(null!);
 
-  // This logic is now simplified as the block rendering handles face-specific transforms.
   useEffect(() => {
     const angle = faceIndex * (Math.PI / 2);
     groupRef.current.rotation.y = angle;
@@ -202,7 +201,7 @@ const GameBoardFace = ({
               (GRID_HEIGHT - y) * BLOCK_SIZE -
                 BOARD_HEIGHT / 2 -
                 BLOCK_SIZE / 2,
-              BOARD_WIDTH / 2 // Render all settled blocks on the "front" of their rotated plane
+              BOARD_WIDTH / 2
             );
             const color = TETROMINOS[cell as keyof typeof TETROMINOS].color;
             return (
@@ -222,10 +221,13 @@ const GameBoardFace = ({
 
 const CAMERA_DISTANCE = 24;
 
-const GameScene = ({ gameState }: { gameState: GameState }) => {
-  const { grids, activeFace, currentBlock, showGhost } = gameState;
-  const currentBlockGroupRef = useRef<THREE.Group>(null!);
+const GameScene = () => {
+  const grids = useAtomValue(gridsAtom);
+  const activeFace = useAtomValue(activeFaceAtom);
+  const currentBlock = useAtomValue(currentBlockAtom);
+  const showGhost = useAtomValue(showGhostAtom);
 
+  const currentBlockGroupRef = useRef<THREE.Group>(null!);
   const tempQuaternion = new THREE.Quaternion();
 
   useFrame((state) => {
@@ -253,7 +255,6 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
     const ghostBlockInstance = new TetrisBlock(currentBlock.type);
     ghostBlockInstance.shape = currentBlock.shape;
 
-    // Find the furthest valid 'y' position
     while (
       isValidMove(grid, ghostBlockInstance, {
         x: currentBlock.position.x,
@@ -270,12 +271,9 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
     const Component = isGhost ? GhostBlock3D : TetrisBlock3D;
     const color = isGhost ? "white" : block.color;
 
-    return block.shape.map((row, y) =>
-      row.map((cell, x) => {
+    return block.shape.map((row: (string|number)[], y: number) =>
+      row.map((cell: string|number, x: number) => {
         if (cell !== 0) {
-          // ** Z-Axis Fix Applied Here **
-          // All active and ghost blocks are rendered on the Z-plane corresponding to the front of the cube.
-          // The `currentBlockGroupRef` rotation handles which face is "front".
           const position = new THREE.Vector3(
             (block.position.x + x) * BLOCK_SIZE -
               BOARD_WIDTH / 2 +
@@ -283,7 +281,7 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
             (GRID_HEIGHT - (block.position.y + y)) * BLOCK_SIZE -
               BOARD_HEIGHT / 2 -
               BLOCK_SIZE / 2,
-            BOARD_WIDTH / 2 // Correct Z-depth for the active face
+            BOARD_WIDTH / 2
           );
           return (
             <Component key={`${y}-${x}`} position={position} color={color} />
@@ -299,10 +297,9 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
       <ambientLight intensity={0.6} />
       <pointLight position={[10, 10, 20]} intensity={1.0} />
       <group>
-        {grids.map((grid, index) => (
+        {grids.map((grid: (string|number)[][], index: number) => (
           <GameBoardFace key={index} grid={grid} faceIndex={index} />
         ))}
-        {/* The group now only handles rotation; positioning is done in renderBlock */}
         <group ref={currentBlockGroupRef}>
           {currentBlock && renderBlock(currentBlock)}
           {calculateGhostPosition && renderBlock(calculateGhostPosition, true)}
@@ -318,11 +315,6 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
     </>
   );
 };
-
-interface GameBoard3DProps {
-  gameState: GameState;
-  dispatch: React.Dispatch<GameAction>;
-}
 
 const LevelUpOverlay = () => {
   const overlayStyle: React.CSSProperties = {
@@ -354,48 +346,34 @@ const LevelUpOverlay = () => {
   );
 };
 
-const GameBoard3D: React.FC<GameBoard3DProps> = ({ gameState, dispatch }) => {
-  const { isGameOver, nextBlock, level } = gameState;
+const GameBoard3D: React.FC = () => {
+  const isGameOver = useAtomValue(isGameOverAtom);
+  const level = useAtomValue(levelAtom);
+
   const [levelUpFlash, setLevelUpFlash] = useState(false);
   const prevLevelRef = useRef(level);
 
   useEffect(() => {
     if (level > prevLevelRef.current) {
       setLevelUpFlash(true);
-      const timer = setTimeout(() => setLevelUpFlash(false), 500); // Duration of the flash
+      const timer = setTimeout(() => setLevelUpFlash(false), 500);
       prevLevelRef.current = level;
       return () => clearTimeout(timer);
     } else if (level < prevLevelRef.current) {
-      // Handle level reset on new game
       prevLevelRef.current = level;
     }
   }, [level]);
 
-  // Keyboard events for face switching and ghost toggle
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isGameOver) return;
-      const key = event.key.toLowerCase();
-      if (key === "q")
-        dispatch({ type: "CHANGE_FACE", payload: { direction: "left" } });
-      else if (key === "e")
-        dispatch({ type: "CHANGE_FACE", payload: { direction: "right" } });
-      else if (key === "g") dispatch({ type: "TOGGLE_GHOST" });
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dispatch, isGameOver]);
-
   return (
     <div style={{ position: "relative", height: "100vh", width: "100vw" }}>
-      {isGameOver && <GameOverOverlay dispatch={dispatch} />}
+      {isGameOver && <GameOverOverlay />}
       {levelUpFlash && <LevelUpOverlay />}
-      <NextBlockPreview nextBlock={nextBlock} />
+      <NextBlockPreview />
       <Canvas
         style={{ height: "100%", width: "100%", background: "#050505" }}
-        camera={{ fov: 60, position: [0, 0, 24] }} // Use a fixed position
+        camera={{ fov: 60, position: [0, 0, 24] }}
       >
-        <GameScene gameState={gameState} />
+        <GameScene />
         <GameBoardBoundary />
       </Canvas>
     </div>
