@@ -170,10 +170,6 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
         currentIndex = (currentIndex - 1 + state.myFaces.length) % state.myFaces.length;
       }
       nextFace = state.myFaces[currentIndex];
-
-      if (state.currentBlock && !isValidMove(state.grids[nextFace], state.currentBlock, state.currentBlock.position)) {
-        return state; 
-      }
       
       return { ...state, activeFace: nextFace };
 
