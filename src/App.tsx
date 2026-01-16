@@ -1,5 +1,6 @@
 import React, { useEffect, useReducer } from "react";
 import GameBoard3D from "./components/GameBoard3D";
+import KeyHints from "./components/KeyHints";
 import { createEmptyGrid, gameReducer } from "./engine/gameReducer";
 import { TetrisBlock } from "./engine/TetrisBlock";
 
@@ -17,6 +18,7 @@ const App: React.FC = () => {
     isGameOver: false,
     myFaces: [0, 1, 2, 3],
     showGhost: true,
+    nextBlock: new TetrisBlock("L"),
   });
 
   useEffect(() => {
@@ -48,6 +50,9 @@ const App: React.FC = () => {
           break;
         case "e":
           dispatch({ type: "CHANGE_FACE", payload: { direction: "right" } });
+          break;
+        case "g":
+          dispatch({ type: "TOGGLE_GHOST" });
           break;
       }
     };
@@ -91,16 +96,8 @@ const App: React.FC = () => {
       <div style={infoStyles}>
         <p>Score: {gameState.score}</p>
         <p>Face: {gameState.activeFace}</p>
-        <div>
-          Controls:
-          <br />
-          Arrows: Move & Rotate
-          <br />
-          Space: Drop
-          <br />
-          Q/E: Change Face
-        </div>
       </div>
+      <KeyHints />
       <GameBoard3D gameState={gameState} dispatch={dispatch} />
     </div>
   );

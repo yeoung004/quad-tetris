@@ -17,7 +17,11 @@ const BOARD_WIDTH = GRID_WIDTH * BLOCK_SIZE;
 const BOARD_HEIGHT = GRID_HEIGHT * BLOCK_SIZE;
 
 // --- UI Components (non-R3F) ---
-const GameOverOverlay = ({ dispatch }: { dispatch: React.Dispatch<GameAction> }) => {
+const GameOverOverlay = ({
+  dispatch,
+}: {
+  dispatch: React.Dispatch<GameAction>;
+}) => {
   const [showText, setShowText] = useState(true);
 
   useEffect(() => {
@@ -34,14 +38,31 @@ const GameOverOverlay = ({ dispatch }: { dispatch: React.Dispatch<GameAction> })
   }, [dispatch]);
 
   const overlayStyle: React.CSSProperties = {
-    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.75)", display: "flex", flexDirection: "column",
-    justifyContent: "center", alignItems: "center", color: "#00ffff",
-    fontFamily: "'Cutive Mono', 'Courier New', monospace", zIndex: 100,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    color: "#00ffff",
+    fontFamily: "'Cutive Mono', 'Courier New', monospace",
+    zIndex: 100,
     textShadow: "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff",
   };
-  const h1Style: React.CSSProperties = { fontSize: "5rem", marginBottom: "1rem", letterSpacing: "0.5rem" };
-  const pStyle: React.CSSProperties = { fontSize: "1.5rem", transition: "opacity 0.7s ease-in-out", opacity: showText ? 1 : 0.2 };
+  const h1Style: React.CSSProperties = {
+    fontSize: "5rem",
+    marginBottom: "1rem",
+    letterSpacing: "0.5rem",
+  };
+  const pStyle: React.CSSProperties = {
+    fontSize: "1.5rem",
+    transition: "opacity 0.7s ease-in-out",
+    opacity: showText ? 1 : 0.2,
+  };
 
   return (
     <div style={overlayStyle}>
@@ -51,7 +72,71 @@ const GameOverOverlay = ({ dispatch }: { dispatch: React.Dispatch<GameAction> })
   );
 };
 
-// --- R3F Components (to be used inside Canvas) ---
+const NextBlockPreview = ({ nextBlock }: { nextBlock: TetrisBlock | null }) => {
+  if (!nextBlock) return null;
+
+  const previewStyle: React.CSSProperties = {
+    position: "absolute",
+    top: "20px",
+    right: "20px",
+    width: "150px",
+    height: "150px",
+    background: "rgba(0,0,0,0.25)",
+    border: "1px solid #00ffff",
+    borderRadius: "10px",
+    zIndex: 100,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    fontFamily: "'Cutive Mono', 'Courier New', monospace",
+    color: "#00ffff",
+    textShadow: "0 0 5px #00ffff",
+  };
+
+  const shape = nextBlock.shape;
+  const shapeWidth = shape[0].length;
+  const shapeHeight = shape.length;
+  const offsetX = (4 - shapeWidth) / 2;
+  const offsetY = (4 - shapeHeight) / 2;
+
+  return (
+    <div style={previewStyle}>
+      <div style={{ textAlign: "center", padding: "5px", flexShrink: 0 }}>
+        NEXT
+      </div>
+      <div style={{ flexGrow: 1, position: "relative" }}>
+        <Canvas camera={{ fov: 30, position: [0, 0, 10] }}>
+          <ambientLight intensity={0.8} />
+          <pointLight position={[10, 10, 10]} intensity={0.5} />
+          <group scale={[0.9, 0.9, 0.9]}>
+            {shape.map((row, y) =>
+              row.map((cell, x) => {
+                if (cell !== 0) {
+                  return (
+                    <Box
+                      key={`${y}-${x}`}
+                      args={[1, 1, 1]}
+                      position={[x + offsetX - 1.5, -(y + offsetY) + 1.5, 0]}
+                    >
+                      <meshStandardMaterial
+                        color={nextBlock.color}
+                        emissive={nextBlock.color}
+                        emissiveIntensity={0.4}
+                        toneMapped={false}
+                      />
+                      <Edges color={nextBlock.color} />
+                    </Box>
+                  );
+                }
+                return null;
+              })
+            )}
+          </group>
+        </Canvas>
+      </div>
+    </div>
+  );
+};
 
 const GameBoardBoundary = () => (
   <group>
@@ -59,31 +144,46 @@ const GameBoardBoundary = () => (
       <meshBasicMaterial transparent opacity={0.05} color="#00ffff" />
       <Edges threshold={15} color="#00ffff" />
     </Box>
-    {/* Grid helpers for each face can be useful for debugging */}
-    <gridHelper args={[BOARD_WIDTH, GRID_WIDTH, "#444", "#222"]} position={[0, -BOARD_HEIGHT / 2, 0]} rotation={[0, 0, 0]} />
-    <gridHelper args={[BOARD_WIDTH, GRID_WIDTH, "#444", "#222"]} position={[0, 0, -BOARD_HEIGHT / 2]} rotation={[Math.PI / 2, 0, 0]}/>
-    <gridHelper args={[BOARD_WIDTH, GRID_WIDTH, "#444", "#222"]} position={[0, 0, BOARD_HEIGHT / 2]} rotation={[Math.PI / 2, 0, 0]}/>
-    <gridHelper args={[BOARD_WIDTH, GRID_WIDTH, "#444", "#222"]} position={[-BOARD_WIDTH / 2, 0, 0]} rotation={[0, 0, Math.PI / 2]}/>
-    <gridHelper args={[BOARD_WIDTH, GRID_WIDTH, "#444", "#222"]} position={[BOARD_WIDTH / 2, 0, 0]} rotation={[0, 0, Math.PI / 2]}/>
   </group>
 );
 
-
-const TetrisBlock3D = ({ position, color }: { position: THREE.Vector3; color: string }) => (
+const TetrisBlock3D = ({
+  position,
+  color,
+}: {
+  position: THREE.Vector3;
+  color: string;
+}) => (
   <Box args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} position={position}>
-    <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} toneMapped={false} />
+    <meshStandardMaterial
+      color={color}
+      emissive={color}
+      emissiveIntensity={0.3}
+      toneMapped={false}
+    />
     <Edges threshold={15} color={color} />
   </Box>
 );
 
 const GhostBlock3D = ({ position }: { position: THREE.Vector3 }) => (
   <Box args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} position={position}>
-    <meshBasicMaterial color="white" transparent opacity={0.2} toneMapped={false} />
+    <meshBasicMaterial
+      color="white"
+      transparent
+      opacity={0.2}
+      toneMapped={false}
+    />
     <Edges color="white" />
   </Box>
 );
 
-const GameBoardFace = ({ grid, faceIndex }: { grid: (string | number)[][]; faceIndex: number }) => {
+const GameBoardFace = ({
+  grid,
+  faceIndex,
+}: {
+  grid: (string | number)[][];
+  faceIndex: number;
+}) => {
   const groupRef = useRef<THREE.Group>(null!);
 
   // This logic is now simplified as the block rendering handles face-specific transforms.
@@ -99,11 +199,19 @@ const GameBoardFace = ({ grid, faceIndex }: { grid: (string | number)[][]; faceI
           if (cell !== 0) {
             const position = new THREE.Vector3(
               x * BLOCK_SIZE - BOARD_WIDTH / 2 + BLOCK_SIZE / 2,
-              (GRID_HEIGHT - y) * BLOCK_SIZE - BOARD_HEIGHT / 2 - BLOCK_SIZE / 2,
+              (GRID_HEIGHT - y) * BLOCK_SIZE -
+                BOARD_HEIGHT / 2 -
+                BLOCK_SIZE / 2,
               BOARD_WIDTH / 2 // Render all settled blocks on the "front" of their rotated plane
             );
             const color = TETROMINOS[cell as keyof typeof TETROMINOS].color;
-            return <TetrisBlock3D key={`${y}-${x}`} position={position} color={color} />;
+            return (
+              <TetrisBlock3D
+                key={`${y}-${x}`}
+                position={position}
+                color={color}
+              />
+            );
           }
           return null;
         })
@@ -117,23 +225,7 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
   const currentBlockGroupRef = useRef<THREE.Group>(null!);
   const targetQuaternion = useMemo(() => new THREE.Quaternion(), []);
 
-  // Correct camera distance and FOV for a larger view
-  const faceProperties = useMemo(() => {
-    const CAMERA_DISTANCE = 24; // Adjusted for a closer view
-    return [
-      { camPos: new THREE.Vector3(0, 0, CAMERA_DISTANCE), target: new THREE.Vector3(0, 0, 0) },
-      { camPos: new THREE.Vector3(CAMERA_DISTANCE, 0, 0), target: new THREE.Vector3(0, 0, 0) },
-      { camPos: new THREE.Vector3(0, 0, -CAMERA_DISTANCE), target: new THREE.Vector3(0, 0, 0) },
-      { camPos: new THREE.Vector3(-CAMERA_DISTANCE, 0, 0), target: new THREE.Vector3(0, 0, 0) },
-    ];
-  }, []);
-
-  useFrame((state) => {
-    // Smooth camera transition
-    const activeProps = faceProperties[activeFace];
-    state.camera.position.lerp(activeProps.camPos, 0.1);
-    state.camera.lookAt(activeProps.target);
-
+  useFrame(() => {
     // Smooth rotation for the active block group to match face changes
     if (currentBlockGroupRef.current) {
       const angle = activeFace * (Math.PI / 2);
@@ -172,8 +264,7 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
             (GRID_HEIGHT - (block.position.y + y)) * BLOCK_SIZE - BOARD_HEIGHT / 2 - BLOCK_SIZE / 2,
             BOARD_WIDTH / 2 // Correct Z-depth for the active face
           );
-          return <Component key={`${y}-${x}`} position={position} color={color} />;
-        }
+          return <Component key={`${y}-${x}`} position={position} color={color} />;n        }
         return null;
       })
     );
@@ -184,7 +275,6 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
       <ambientLight intensity={0.6} />
       <pointLight position={[10, 10, 20]} intensity={1.0} />
       <group>
-        <GameBoardBoundary />
         {grids.map((grid, index) => (
           <GameBoardFace key={index} grid={grid} faceIndex={index} />
         ))}
@@ -201,35 +291,58 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
   );
 };
 
+const AnimatedCamera = ({ activeFace }: { activeFace: number }) => {
+  const cameraRef = useRef<THREE.PerspectiveCamera>(null!);
+
+  const targetQuaternions = useMemo(
+    () => [
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0), // Face 0 (front)
+      new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0),
+        Math.PI / 2
+      ), // Face 1 (right)
+      new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0),
+        Math.PI
+      ), // Face 2 (back)
+      new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0),
+        -Math.PI / 2
+      ), // Face 3 (left)
+    ],
+    []
+  );
+
+  useFrame((state) => {
+    // Correctly slerp the camera's quaternion
+    const targetQuaternion = targetQuaternions[activeFace];
+    if (targetQuaternion) {
+      state.camera.quaternion.slerp(targetQuaternion, 0.15);
+    }
+  });
+
+  return <perspectiveCamera ref={cameraRef} fov={60} position={[0, 0, 24]} />;
+};
+
 interface GameBoard3DProps {
   gameState: GameState;
   dispatch: React.Dispatch<GameAction>;
 }
 
 const GameBoard3D: React.FC<GameBoard3DProps> = ({ gameState, dispatch }) => {
-  const { isGameOver } = gameState;
-
-  // Keyboard events for face switching and ghost toggle
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (gameState.isGameOver) return;
-      const key = event.key.toLowerCase();
-      if (key === "q") dispatch({ type: "CHANGE_FACE", payload: { direction: "left" } });
-      else if (key === "e") dispatch({ type: "CHANGE_FACE", payload: { direction: "right" } });
-      else if (key === "g") dispatch({ type: "TOGGLE_GHOST" });
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dispatch, gameState.isGameOver]);
+  const { isGameOver, nextBlock, activeFace } = gameState;
 
   return (
     <div style={{ position: "relative", height: "100vh", width: "100vw" }}>
       {isGameOver && <GameOverOverlay dispatch={dispatch} />}
+      <NextBlockPreview nextBlock={nextBlock} />
       <Canvas
         style={{ height: "100%", width: "100%", background: "#050505" }}
-        camera={{ fov: 60, position: [0, 0, 15] }} // Adjusted FOV and initial position
+        camera={{ fov: 60, position: [0, 0, 24] }} // Use a fixed position
       >
         <GameScene gameState={gameState} />
+        <AnimatedCamera activeFace={activeFace} />
+        <GameBoardBoundary />
       </Canvas>
     </div>
   );

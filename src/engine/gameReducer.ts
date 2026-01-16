@@ -13,6 +13,7 @@ export type GameState = {
   grids: (string | number)[][][];
   activeFace: number;
   currentBlock: TetrisBlock | null;
+  nextBlock: TetrisBlock | null;
   score: number;
   isGameOver: boolean;
   myFaces: number[];
@@ -33,6 +34,7 @@ const initialState: GameState = {
   grids: [createEmptyGrid(), createEmptyGrid(), createEmptyGrid(), createEmptyGrid()],
   activeFace: 0,
   currentBlock: null,
+  nextBlock: null,
   score: 0,
   isGameOver: false,
   myFaces: [0, 1, 2, 3],
@@ -88,15 +90,26 @@ function placeBlock(state: GameState): GameState {
   const newGrids = [...grids];
   newGrids[activeFace] = newGrid;
 
-  if (blockY < 1) {
-    return { ...state, grids: newGrids, isGameOver: true, currentBlock: null };
-  }
+  // Prepare for next block
+  const nextBlock = state.nextBlock ? state.nextBlock : spawnNewBlock();
+  
+  // The new block starts at a standard position
+  const newCurrentBlock = new TetrisBlock(nextBlock.type);
+  newCurrentBlock.shape = nextBlock.shape;
+  newCurrentBlock.position = { x: Math.floor(GRID_WIDTH / 2) - 1, y: 0 };
 
-  const newState: GameState = {
+
+  const newState = {
     ...state,
     grids: newGrids,
-    currentBlock: spawnNewBlock(),
+    currentBlock: newCurrentBlock,
+    nextBlock: spawnNewBlock(), // a completely new block for preview
   };
+
+  // After setting the new block, check if it's in a valid position. If not, game over.
+  if (!isValidMove(newState.grids[newState.activeFace], newState.currentBlock, newState.currentBlock.position)) {
+    return { ...state, grids: newGrids, isGameOver: true, currentBlock: null };
+  }
 
   return checkMultiFaceLineClear(newState);
 }
@@ -108,6 +121,7 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
             ...initialState,
             grids: [createEmptyGrid(), createEmptyGrid(), createEmptyGrid(), createEmptyGrid()],
             currentBlock: spawnNewBlock(),
+            nextBlock: spawnNewBlock(),
             isGameOver: false,
             score: 0,
         };
