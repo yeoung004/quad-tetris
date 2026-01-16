@@ -54,6 +54,7 @@
 - **핵심 로직**:
     - `useSetAtom`으로 `moveBlockAtom`, `placeBlockAtom` 등 액션 atom들의 setter 함수를 가져옵니다.
     - `useEffect` (Game Loop / Keyboard): 상태에 따라 적절한 액션 atom을 실행합니다. 'f' 키 입력을 감지하여 `toggleFocusModeAtom`을 호출, 포커스 모드를 토글합니다.
+    - **키보드 입력 (DAS/ARR)**: `keydown` 및 `keyup` 이벤트를 리스닝하여 `setTimeout`과 `setInterval`을 사용한 **DAS (Delayed Auto Shift)** 로직을 구현합니다. 사용자가 좌/우/아래 방향키를 길게 누르면, 짧은 지연(`DAS_DELAY`) 후 `ARR` (Auto Repeat Rate) 간격으로 `moveBlockAtom`이 연속적으로 호출되어 부드러운 블록 이동을 제공합니다. `useRef`를 사용하여 타이머 ID를 관리하고, `e.repeat` 플래그를 이용해 키의 첫 입력만 감지하여 안정적으로 타이머를 시작합니다.
     - `useAtomValue`로 `isGameOver`, `level` 등의 상태를 구독하여 로직에 사용합니다.
 - **의존성**: `react`, `jotai`, `gameAtoms.ts`.
 
@@ -78,11 +79,13 @@ Jotai 아키텍처는 `useReducer`와 달리 중앙 집중식 스토어가 아�
 
 1.  **상태 정의 (`gameAtoms.ts`)**: 게임의 모든 상태(`grids`, `score` 등)가 독립적인 `atom`으로 존재합니다.
 
-2.  **사용자 입력 (`GameController.tsx`)**: 사용자가 키보드를 누르면 `GameController`의 `useEffect`가 이를 감지하고 `useGameActions`에서 가져온 특정 액션 함수(예: `moveBlock(-1, 0)`)를 호출합니다.
+2.  **사용자 입력 (`GameController.tsx`)**:
+    - **단일 입력**: 사용자가 키보드를 한 번 누르면(예: `ArrowUp`), `GameController`의 `keydown` 이벤트 핸들러가 이를 감지하고 `rotateBlockAtom` 같은 액션 atom을 즉시 호출합니다.
+    - **연속 입력 (DAS)**: 사용자가 이동키(좌/우/아래)를 길게 누르면, `keydown` 핸들러가 첫 입력 시점에 DAS 타이머를 시작합니다. 지연 시간이 지나면 ARR 타이머가 활성화되어 `moveBlockAtom`을 주기적으로 호출, 부드러운 연속 이동을 구현합니다. 사용자가 키를 떼면 `keyup` 핸들러가 모든 관련 타이머를 즉시 해제합니다.
 
-3.  **액션 실행 (`useGameActions.ts`)**:
-    - `moveBlock` 함수가 호출되면, 내부에서 `setGameState(prev => ...)`를 사용하여 관련 atom들의 상태를 원자적으로(atomically) 업데이트합니다.
-    - `isValidMove` 같은 순수 함수를 사용하여 다음 상태를 계산하고, 레이스 컨디션을 방지하기 위해 반드시 함수형 업데이트를 사용합니다.
+3.  **액션 실행 (`gameAtoms.ts`)**:
+    - `moveBlockAtom`이나 `rotateBlockAtom` 같은 액션이 호출되면, 내부 로직이 `set` 함수를 사용하여 관련 상태 atom들을 원자적으로(atomically) 업데이트합니다.
+    - `isValidMove` 같은 순수 함수를 사용하여 다음 상태를 계산하고, 레이스 컨디션을 방지하기 위해 항상 함수형 업데이트(`set(atom, prev => ...)`)를 사용합니다.
 
 4.  **상태 전파 및 리렌더링**:
     - `currentBlockAtom`의 상태가 변경되면, 이 atom을 `useAtomValue`로 구독하고 있는 `GameBoard3D`의 `GameScene` 컴포넌트만 리렌더링됩니다.
@@ -90,7 +93,7 @@ Jotai 아키텍처는 `useReducer`와 달리 중앙 집중식 스토어가 아�
     - **최적화**: 이처럼 상태 변경이 발생한 atom을 구독하는 컴포넌트만 정확히 리렌더링되므로, 불필요한 렌더링이 최소화됩니다.
 
 5.  **독립적인 로직 실행**:
-    - `GameController`의 하강 타이머(`setInterval`)는 `moveBlock(0, 1)`을 주기적으로 호출합니다.
+    - `GameController`의 하강 타이머(`setInterval`)는 `moveBlock({ dx: 0, dy: 1 })`을 주기적으로 호출합니다.
     - 동시에 사용자는 `changeFace('left')`를 호출할 수 있습니다. 이 액션은 `activeFaceAtom`을 변경하며, `useFrame` 훅이 이 변경을 감지하여 카메라를 부드럽게 회전시킵니다.
     - 두 로직은 서로 다른 atom을 업데이트하므로 충돌하지 않고 독립적으로 실행될 수 있습니다. `useReducer`에서 발생할 수 있었던 복잡한 상태 병합 및 덮어쓰기 문제가 원천적으로 해결됩니다.
 
@@ -110,3 +113,16 @@ Jotai 아키텍처는 `useReducer`와 달리 중앙 집중식 스토어가 아�
     - `GameBoardBoundary` 컴포넌트 역시 `isFocusModeAtom`을 구독하여, 포커스 모드 시 자신의 `opacity`를 높여 배경의 방해 요소를 줄입니다.
 
 이 흐름을 통해 단일 상태(`isFocusModeAtom`)의 변경만으로 여러 3D 컴포넌트의 시각적 표현이 일관되게 변경되어 최적화된 사용자 경험을 제공합니다.
+
+## 5. UX 개선: DAS를 통한 연속 이동 로직
+
+**DAS (Delayed Auto Shift)** 와 **ARR (Auto Repeat Rate)** 시스템은 현대 테트리스 게임의 표준 조작감을 제공하여 사용자 경험을 크게 향상시킵니다.
+
+- **문제점**: DAS가 없으면, 사용자는 블록을 여러 칸 이동시키기 위해 방향키를 반복적으로 눌러야 합니다. 이는 피로감을 유발하고 정교하고 빠른 조작을 방해합니다.
+- **해결책**:
+    1.  **최초 입력**: 사용자가 키를 누르면 블록이 즉시 한 칸 이동합니다.
+    2.  **지연 (DAS_DELAY)**: 사용자가 키를 계속 누르고 있으면, 160ms의 짧은 지연 후 자동 반복이 시작됩니다. 이 지연 시간 덕분에 사용자는 실수로 너무 많이 이동하는 것을 방지하고 한 칸만 정확히 이동할 수 있습니다.
+    3.  **연속 이동 (ARR)**: 지연 시간이 끝나면, 50ms마다 블록이 한 칸씩 부드럽게 이동합니다. 이를 통해 사용자는 벽에 블록을 빠르고 쉽게 붙일 수 있습니다.
+    4.  **입력 해제**: 사용자가 키에서 손을 떼는 즉시 모든 이동이 멈추므로, 반응성이 뛰어나고 직관적인 조작이 가능합니다.
+
+이 시스템은 `GameController.tsx` 내에서 `setTimeout`과 `setInterval`을 조합하여 구현되었으며, `useEffect`의 클린업 함수를 통해 사용자가 다른 면으로 전환(`changeFace`)하거나 게임이 종료될 때 모든 타이머가 안정적으로 제거되도록 보장합니다.
