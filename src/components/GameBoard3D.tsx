@@ -8,6 +8,7 @@ import {
   activeFaceAtom,
   currentBlockAtom,
   gridsAtom,
+  isFocusModeAtom,
   isGameOverAtom,
   levelAtom,
   nextBlockAtom,
@@ -138,21 +139,31 @@ const NextBlockPreview = () => {
   );
 };
 
-const GameBoardBoundary = () => (
-  <group>
-    <Box args={[BOARD_WIDTH, BOARD_HEIGHT, BOARD_WIDTH]}>
-      <meshBasicMaterial transparent opacity={0.05} color="#00ffff" />
-      <Edges threshold={15} color="#00ffff" />
-    </Box>
-  </group>
-);
+const GameBoardBoundary = () => {
+  const isFocusMode = useAtomValue(isFocusModeAtom);
+
+  return (
+    <group>
+      <Box args={[BOARD_WIDTH, BOARD_HEIGHT, BOARD_WIDTH]}>
+        <meshBasicMaterial
+          transparent
+          opacity={isFocusMode ? 1 : 0.05}
+          color={isFocusMode ? "#000000" : "#00ffff"}
+        />
+        <Edges threshold={15} color="#00ffff" />
+      </Box>
+    </group>
+  );
+};
 
 const TetrisBlock3D = ({
   position,
   color,
+  opacity = 1.0,
 }: {
   position: THREE.Vector3;
   color: string;
+  opacity?: number;
 }) => (
   <Box args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} position={position}>
     <meshStandardMaterial
@@ -160,6 +171,8 @@ const TetrisBlock3D = ({
       emissive={color}
       emissiveIntensity={0.3}
       toneMapped={false}
+      transparent={opacity < 1.0}
+      opacity={opacity}
     />
     <Edges threshold={15} color={color} />
   </Box>
@@ -180,9 +193,13 @@ const GhostBlock3D = ({ position }: { position: THREE.Vector3 }) => (
 const GameBoardFace = ({
   grid,
   faceIndex,
+  isFocusMode,
+  activeFace,
 }: {
   grid: (string | number)[][];
   faceIndex: number;
+  isFocusMode: boolean;
+  activeFace: number;
 }) => {
   const groupRef = useRef<THREE.Group>(null!);
 
@@ -190,6 +207,8 @@ const GameBoardFace = ({
     const angle = faceIndex * (Math.PI / 2);
     groupRef.current.rotation.y = angle;
   }, [faceIndex]);
+
+  const opacity = isFocusMode && faceIndex !== activeFace ? 0.05 : 1.0;
 
   return (
     <group ref={groupRef}>
@@ -209,6 +228,7 @@ const GameBoardFace = ({
                 key={`${y}-${x}`}
                 position={position}
                 color={color}
+                opacity={opacity}
               />
             );
           }
@@ -226,6 +246,7 @@ const GameScene = () => {
   const activeFace = useAtomValue(activeFaceAtom);
   const currentBlock = useAtomValue(currentBlockAtom);
   const showGhost = useAtomValue(showGhostAtom);
+  const isFocusMode = useAtomValue(isFocusModeAtom);
 
   const currentBlockGroupRef = useRef<THREE.Group>(null!);
   const tempQuaternion = new THREE.Quaternion();
@@ -268,11 +289,8 @@ const GameScene = () => {
   }, [currentBlock, activeFace, grids, showGhost]);
 
   const renderBlock = (block: TetrisBlock, isGhost = false) => {
-    const Component = isGhost ? GhostBlock3D : TetrisBlock3D;
-    const color = isGhost ? "white" : block.color;
-
-    return block.shape.map((row: (string|number)[], y: number) =>
-      row.map((cell: string|number, x: number) => {
+    return block.shape.map((row: (string | number)[], y: number) =>
+      row.map((cell: string | number, x: number) => {
         if (cell !== 0) {
           const position = new THREE.Vector3(
             (block.position.x + x) * BLOCK_SIZE -
@@ -283,8 +301,15 @@ const GameScene = () => {
               BLOCK_SIZE / 2,
             BOARD_WIDTH / 2
           );
+          if (isGhost) {
+            return <GhostBlock3D key={`${y}-${x}`} position={position} />;
+          }
           return (
-            <Component key={`${y}-${x}`} position={position} color={color} />
+            <TetrisBlock3D
+              key={`${y}-${x}`}
+              position={position}
+              color={block.color}
+            />
           );
         }
         return null;
@@ -297,8 +322,14 @@ const GameScene = () => {
       <ambientLight intensity={0.6} />
       <pointLight position={[10, 10, 20]} intensity={1.0} />
       <group>
-        {grids.map((grid: (string|number)[][], index: number) => (
-          <GameBoardFace key={index} grid={grid} faceIndex={index} />
+        {grids.map((grid: (string | number)[][], index: number) => (
+          <GameBoardFace
+            key={index}
+            grid={grid}
+            faceIndex={index}
+            isFocusMode={isFocusMode}
+            activeFace={activeFace}
+          />
         ))}
         <group ref={currentBlockGroupRef}>
           {currentBlock && renderBlock(currentBlock)}
@@ -307,9 +338,7 @@ const GameScene = () => {
       </group>
       <EffectComposer>
         <Bloom
-          luminanceThreshold={0.1}
           luminanceSmoothing={0.9}
-          intensity={1.5}
         />
       </EffectComposer>
     </>

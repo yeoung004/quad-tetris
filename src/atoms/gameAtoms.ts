@@ -33,6 +33,7 @@ export const showGhostAtom = atom(true);
 export const levelAtom = atom(1);
 export const linesClearedAtom = atom(0);
 export const isLockingAtom = atom(false);
+export const isFocusModeAtom = atom(false);
 
 
 // --- Derived Read-only Atoms ---
@@ -55,6 +56,7 @@ export const gameStateAtom = atom((get): GameState => ({
   level: get(levelAtom),
   linesCleared: get(linesClearedAtom),
   isLocking: get(isLockingAtom),
+  isFocusMode: get(isFocusModeAtom),
 }));
 
 
@@ -201,6 +203,10 @@ export const dropBlockAtom = atom(null, (get, set) => {
 
 export const toggleGhostAtom = atom(null, (get, set) => {
   set(showGhostAtom, !get(showGhostAtom));
+});
+
+export const toggleFocusModeAtom = atom(null, (_get, set) => {
+  set(isFocusModeAtom, (prev) => !prev);
 });
 
 export const setFaceAssignmentsAtom = atom(null, (get, set, faces: number[]) => {

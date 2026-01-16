@@ -13,6 +13,7 @@ import {
   dropBlockAtom,
   placeBlockAtom,
   toggleGhostAtom,
+  toggleFocusModeAtom,
 } from "../atoms/gameAtoms";
 
 // This is a non-rendering component responsible for handling game logic,
@@ -25,6 +26,7 @@ const GameController = () => {
   const dropBlock = useSetAtom(dropBlockAtom);
   const placeBlock = useSetAtom(placeBlockAtom);
   const toggleGhost = useSetAtom(toggleGhostAtom);
+  const toggleFocusMode = useSetAtom(toggleFocusModeAtom);
 
   const isGameOver = useAtomValue(isGameOverAtom);
   const myFaces = useAtomValue(myFacesAtom);
@@ -103,6 +105,9 @@ const GameController = () => {
         case "g":
           toggleGhost();
           break;
+        case "f":
+          toggleFocusMode();
+          break;
       }
     };
 
@@ -120,6 +125,7 @@ const GameController = () => {
     changeFace,
     dropBlock,
     toggleGhost,
+    toggleFocusMode,
     startGame,
   ]);
 

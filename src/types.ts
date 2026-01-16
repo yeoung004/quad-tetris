@@ -12,4 +12,5 @@ export type GameState = {
   level: number;
   linesCleared: number;
   isLocking: boolean;
+  isFocusMode: boolean;
 };

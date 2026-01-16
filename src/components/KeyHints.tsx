@@ -23,6 +23,7 @@ const KeyHints: React.FC = () => {
       <li><span>&larr;&uarr;&rarr;&darr;</span> : Move/Rotate</li>
       <li><span>Space</span> : Drop</li>
       <li><span>G</span> : Ghost Toggle</li>
+      <li><span>F</span> : Focus Mode</li>
     </ul>
   );
 

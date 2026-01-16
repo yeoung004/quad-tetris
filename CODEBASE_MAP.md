@@ -44,24 +44,27 @@
 ### `src/atoms/gameAtoms.ts`
 - **주요 역할**: 게임의 모든 상태와 관련 액션을 원자(atom) 단위로 정의합니다. 상태와 로직이 한 곳에 모여있습니다.
 - **핵심 atom**:
-    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom` 등 독립적인 상태 조각들.
+    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isFocusModeAtom` 등 독립적인 상태 조각들.
     - **Derived Atoms**: `currentGridAtom` 같이 다른 atom을 조합하여 만드는 읽기 전용 파생 상태.
-    - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `placeBlockAtom` 등 게임 로직을 실행하는 쓰기 전용 atom. `get`과 `set`을 사용하여 원자적으로 다른 atom들을 업데이트합니다.
+    - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `placeBlockAtom`, `toggleFocusModeAtom` 등 게임 로직을 실행하는 쓰기 전용 atom. `get`과 `set`을 사용하여 원자적으로 다른 atom들을 업데이트합니다.
 - **의존성**: `jotai`.
 
 ### `src/components/GameController.tsx`
 - **주요 역할**: 게임의 "엔진" 역할을 수행하는 보이지 않는(non-rendering) 컴포넌트입니다. 게임 루프, 키보드 입력, 락 딜레이 등 모든 사이드 이펙트를 처리합니다.
 - **핵심 로직**:
     - `useSetAtom`으로 `moveBlockAtom`, `placeBlockAtom` 등 액션 atom들의 setter 함수를 가져옵니다.
+    - `useEffect` (Game Loop / Keyboard): 상태에 따라 적절한 액션 atom을 실행합니다. 'f' 키 입력을 감지하여 `toggleFocusModeAtom`을 호출, 포커스 모드를 토글합니다.
     - `useAtomValue`로 `isGameOver`, `level` 등의 상태를 구독하여 로직에 사용합니다.
-    - `useEffect` (Game Loop / Keyboard): 상태에 따라 적절한 액션 atom을 실행합니다.
 - **의존성**: `react`, `jotai`, `gameAtoms.ts`.
 
 ### `src/components/GameBoard3D.tsx`
 - **주요 역할**: `three.js`를 사용하여 게임의 3D 렌더링을 담당합니다.
 - **핵심 로직**:
     - `gameState`와 `dispatch` prop이 제거되고, `useAtomValue`를 사용하여 `gridsAtom`, `currentBlockAtom` 등 렌더링에 필요한 상태를 직접 구독합니다.
-    - `GameScene`, `NextBlockPreview`, `GameOverOverlay` 등 하위 컴포넌트들도 atom을 직접 구독하거나 필요한 값을 prop으로 전달받습니다. 이로써 컴포넌트들이 완전히 분리되고 재사용성이 높아집니다.
+    - `isFocusModeAtom`과 `activeFaceAtom`을 구독하여 '포커스 모드'를 구현합니다.
+    - **GameBoardFace**: `GameScene` 내부에 정의된 이 컴포넌트는 `isFocusMode`가 활성화되면 `activeFace`가 아닌 다른 면의 블록들을 희미하게(low opacity) 렌더링하여 사용자의 시선을 집중시킵니다.
+    - **GameBoardBoundary**: 포커스 모드일 때 경계 박스의 불투명도를 높여 뒷면의 시각적 노이즈를 차단합니다.
+    - `NextBlockPreview`, `GameOverOverlay` 등 하위 컴포넌트들도 atom을 직접 구독하거나 필요한 값을 prop으로 전달받습니다. 이로써 컴포넌트들이 완전히 분리되고 재사용성이 높아집니다.
 - **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`.
 
 ### `src/engine/grid.ts`
@@ -92,3 +95,18 @@ Jotai 아키텍처는 `useReducer`와 달리 중앙 집중식 스토어가 아�
     - 두 로직은 서로 다른 atom을 업데이트하므로 충돌하지 않고 독립적으로 실행될 수 있습니다. `useReducer`에서 발생할 수 있었던 복잡한 상태 병합 및 덮어쓰기 문제가 원천적으로 해결됩니다.
 
 이 구조는 상태와 로직, 뷰를 명확히 분리하고, 각 컴포넌트가 필요한 최소한의 상태만 구독하게 하여 애플리케이션의 성능과 유지보수성을 극대화합니다.
+
+## 4. 시각적 집중도 최적화 (Focus Mode) 데이터 흐름
+
+'Focus Mode'는 사용자가 현재 활성화된 면에만 집중할 수 있도록 다른 면의 시각적 요소를 최소화하는 기능입니다.
+
+1.  **사용자 입력 (`GameController.tsx`)**: 사용자가 'F' 키를 누릅니다.
+2.  **액션 실행 (`gameAtoms.ts`)**: `GameController`는 `toggleFocusModeAtom` 액션을 호출합니다. 이 액션은 `isFocusModeAtom`의 boolean 상태를 토글합니다.
+3.  **상태 전파 (`Jotai`)**: `isFocusModeAtom`의 상태 변경이 발생합니다.
+4.  **UI 렌더링 (`GameBoard3D.tsx`)**:
+    - `GameBoard3D` 내부의 `GameScene` 컴포넌트는 `isFocusModeAtom`과 `activeFaceAtom`을 구독하고 있습니다.
+    - `GameScene`은 4개의 `GameBoardFace` 자식 컴포넌트를 렌더링할 때, `isFocusMode`와 `activeFace` 상태를 prop으로 전달합니다.
+    - 각 `GameBoardFace`는 자신이 `activeFace`가 아니고 `isFocusMode`가 `true`이면, 내부의 `TetrisBlock3D` 컴포넌트들의 `opacity`를 매우 낮게 설정하여 렌더링합니다.
+    - `GameBoardBoundary` 컴포넌트 역시 `isFocusModeAtom`을 구독하여, 포커스 모드 시 자신의 `opacity`를 높여 배경의 방해 요소를 줄입니다.
+
+이 흐름을 통해 단일 상태(`isFocusModeAtom`)의 변경만으로 여러 3D 컴포넌트의 시각적 표현이 일관되게 변경되어 최적화된 사용자 경험을 제공합니다.
