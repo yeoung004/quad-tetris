@@ -2,7 +2,6 @@ import React, { useEffect, useReducer } from "react";
 import GameBoard3D from "./components/GameBoard3D";
 import KeyHints from "./components/KeyHints";
 import { createEmptyGrid, gameReducer } from "./engine/gameReducer";
-import { TetrisBlock } from "./engine/TetrisBlock";
 
 const App: React.FC = () => {
   const [gameState, dispatch] = useReducer(gameReducer, {
@@ -13,14 +12,62 @@ const App: React.FC = () => {
       createEmptyGrid(),
     ],
     activeFace: 0,
-    currentBlock: new TetrisBlock("I"),
+    currentBlock: null,
+    nextBlock: null,
     score: 0,
-    isGameOver: false,
+    isGameOver: true, // Start in a non-playing state
     myFaces: [0, 1, 2, 3],
     showGhost: true,
-    nextBlock: new TetrisBlock("L"),
+    level: 1,
+    linesCleared: 0,
+    isLocking: false,
   });
 
+  useEffect(() => {
+    dispatch({ type: "START_GAME" });
+  }, []);
+
+  // Game Loop for block falling
+  useEffect(() => {
+    if (
+      gameState.isGameOver ||
+      !gameState.myFaces.includes(gameState.activeFace) ||
+      gameState.isLocking
+    ) {
+      return;
+    }
+
+    const level = gameState.level;
+    const delay = Math.max(
+      100,
+      1000 * Math.pow(0.8 - (level - 1) * 0.007, level - 1)
+    );
+
+    const gameInterval = setInterval(() => {
+      dispatch({ type: "MOVE_BLOCK", payload: { dx: 0, dy: 1 } });
+    }, delay);
+
+    return () => clearInterval(gameInterval);
+  }, [
+    gameState.isGameOver,
+    gameState.myFaces,
+    gameState.activeFace,
+    gameState.level,
+    gameState.isLocking,
+  ]);
+
+  // Lock Delay Timer
+  useEffect(() => {
+    if (gameState.isLocking) {
+      const lockTimeout = setTimeout(() => {
+        dispatch({ type: "PLACE_BLOCK" });
+      }, 500);
+
+      return () => clearTimeout(lockTimeout);
+    }
+  }, [gameState.isLocking]);
+
+  // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -64,20 +111,6 @@ const App: React.FC = () => {
     };
   }, [gameState.isGameOver, gameState.myFaces, gameState.activeFace]);
 
-  useEffect(() => {
-    if (
-      gameState.isGameOver ||
-      !gameState.myFaces.includes(gameState.activeFace)
-    )
-      return;
-
-    const gameInterval = setInterval(() => {
-      dispatch({ type: "MOVE_BLOCK", payload: { dx: 0, dy: 1 } });
-    }, 1000);
-
-    return () => clearInterval(gameInterval);
-  }, [gameState.isGameOver, gameState.myFaces, gameState.activeFace]);
-
   const infoStyles: React.CSSProperties = {
     position: "absolute",
     top: "20px",
@@ -95,6 +128,8 @@ const App: React.FC = () => {
     <div style={{ width: "100vw", height: "100vh", background: "#222" }}>
       <div style={infoStyles}>
         <p>Score: {gameState.score}</p>
+        <p>Level: {gameState.level}</p>
+        <p>Lines: {gameState.linesCleared}</p>
         <p>Face: {gameState.activeFace}</p>
       </div>
       <KeyHints />

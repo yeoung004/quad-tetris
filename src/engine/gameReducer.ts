@@ -18,6 +18,9 @@ export type GameState = {
   isGameOver: boolean;
   myFaces: number[];
   showGhost: boolean;
+  level: number;
+  linesCleared: number;
+  isLocking: boolean;
 };
 
 export type GameAction =
@@ -28,7 +31,8 @@ export type GameAction =
   | { type: 'START_GAME' }
   | { type: 'SET_FACE_ASSIGNMENTS', payload: number[] }
   | { type: 'SET_STATE', payload: GameState }
-  | { type: 'TOGGLE_GHOST' };
+  | { type: 'TOGGLE_GHOST' }
+  | { type: 'PLACE_BLOCK' };
 
 const initialState: GameState = {
   grids: [createEmptyGrid(), createEmptyGrid(), createEmptyGrid(), createEmptyGrid()],
@@ -39,6 +43,9 @@ const initialState: GameState = {
   isGameOver: false,
   myFaces: [0, 1, 2, 3],
   showGhost: true,
+  level: 1,
+  linesCleared: 0,
+  isLocking: false,
 };
 
 export function isValidMove(
@@ -124,6 +131,8 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
             nextBlock: spawnNewBlock(),
             isGameOver: false,
             score: 0,
+            level: 1,
+            linesCleared: 0,
         };
     
     case 'SET_STATE':
@@ -134,6 +143,10 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
         ...state,
         showGhost: !state.showGhost,
       };
+
+    case 'PLACE_BLOCK':
+        if (state.isGameOver || !state.currentBlock) return state;
+        return placeBlock({ ...state, isLocking: false });
 
     case 'MOVE_BLOCK':
       if (state.isGameOver || !state.currentBlock) return state;
@@ -150,9 +163,11 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
         return {
           ...state,
           currentBlock: newBlock,
+          isLocking: false,
         };
       } else if (dy === 1) {
-        return placeBlock(state);
+        // The block hit something while moving down, start locking
+        return { ...state, isLocking: true };
       }
       return state;
 
@@ -164,7 +179,7 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
         rotatedBlock.rotate(); 
 
         if (isValidMove(state.grids[state.activeFace], rotatedBlock, rotatedBlock.position)) {
-            return { ...state, currentBlock: rotatedBlock };
+            return { ...state, currentBlock: rotatedBlock, isLocking: false };
         }
         return state;
 
@@ -188,7 +203,7 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
       }
       nextFace = state.myFaces[currentIndex];
       
-      return { ...state, activeFace: nextFace };
+      return { ...state, activeFace: nextFace, isLocking: false };
 
     case 'DROP_BLOCK':
         if (state.isGameOver || !state.currentBlock) return state;

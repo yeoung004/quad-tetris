@@ -324,13 +324,57 @@ interface GameBoard3DProps {
   dispatch: React.Dispatch<GameAction>;
 }
 
+const LevelUpOverlay = () => {
+  const overlayStyle: React.CSSProperties = {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    color: "#00ffff",
+    fontSize: "5rem",
+    fontFamily: "'Cutive Mono', 'Courier New', monospace",
+    textShadow: "0 0 15px #00ffff, 0 0 25px #00ffff",
+    zIndex: 200,
+    pointerEvents: "none",
+    animation: "levelUp-fade-out 0.5s forwards",
+  };
+
+  const keyframes = `
+        @keyframes levelUp-fade-out {
+            from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            to { opacity: 0; transform: translate(-50%, -80%) scale(1.2); }
+        }
+    `;
+
+  return (
+    <>
+      <style>{keyframes}</style>
+      <div style={overlayStyle}>LEVEL UP</div>
+    </>
+  );
+};
+
 const GameBoard3D: React.FC<GameBoard3DProps> = ({ gameState, dispatch }) => {
-  const { isGameOver, nextBlock } = gameState;
+  const { isGameOver, nextBlock, level } = gameState;
+  const [levelUpFlash, setLevelUpFlash] = useState(false);
+  const prevLevelRef = useRef(level);
+
+  useEffect(() => {
+    if (level > prevLevelRef.current) {
+      setLevelUpFlash(true);
+      const timer = setTimeout(() => setLevelUpFlash(false), 500); // Duration of the flash
+      prevLevelRef.current = level;
+      return () => clearTimeout(timer);
+    } else if (level < prevLevelRef.current) {
+      // Handle level reset on new game
+      prevLevelRef.current = level;
+    }
+  }, [level]);
 
   // Keyboard events for face switching and ghost toggle
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (gameState.isGameOver) return;
+      if (isGameOver) return;
       const key = event.key.toLowerCase();
       if (key === "q")
         dispatch({ type: "CHANGE_FACE", payload: { direction: "left" } });
@@ -340,11 +384,12 @@ const GameBoard3D: React.FC<GameBoard3DProps> = ({ gameState, dispatch }) => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dispatch, gameState.isGameOver]);
+  }, [dispatch, isGameOver]);
 
   return (
     <div style={{ position: "relative", height: "100vh", width: "100vw" }}>
       {isGameOver && <GameOverOverlay dispatch={dispatch} />}
+      {levelUpFlash && <LevelUpOverlay />}
       <NextBlockPreview nextBlock={nextBlock} />
       <Canvas
         style={{ height: "100%", width: "100%", background: "#050505" }}
