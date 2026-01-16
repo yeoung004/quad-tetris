@@ -10,7 +10,7 @@ import {
   GRID_WIDTH,
   isValidMove,
 } from "../engine/gameReducer";
-import { TETROMINOS, TetrisBlock } from "../engine/TetrisBlock";
+import { TetrisBlock, TETROMINOS } from "../engine/TetrisBlock";
 
 const BLOCK_SIZE = 1;
 const BOARD_WIDTH = GRID_WIDTH * BLOCK_SIZE;
@@ -225,6 +225,42 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
   const currentBlockGroupRef = useRef<THREE.Group>(null!);
   const targetQuaternion = useMemo(() => new THREE.Quaternion(), []);
 
+  const faceProperties = useMemo(() => {
+    const CAMERA_DISTANCE = 24; // Adjusted for a closer view
+    return [
+      {
+        camPos: new THREE.Vector3(0, 0, CAMERA_DISTANCE),
+        target: new THREE.Vector3(0, 0, 0),
+      },
+      {
+        camPos: new THREE.Vector3(CAMERA_DISTANCE, 0, 0),
+        target: new THREE.Vector3(0, 0, 0),
+      },
+      {
+        camPos: new THREE.Vector3(0, 0, -CAMERA_DISTANCE),
+        target: new THREE.Vector3(0, 0, 0),
+      },
+      {
+        camPos: new THREE.Vector3(-CAMERA_DISTANCE, 0, 0),
+        target: new THREE.Vector3(0, 0, 0),
+      },
+    ];
+  }, []);
+
+  useFrame((state) => {
+    // Smooth camera transition
+    const activeProps = faceProperties[activeFace];
+    state.camera.position.lerp(activeProps.camPos, 0.1);
+    state.camera.lookAt(activeProps.target);
+
+    // Smooth rotation for the active block group to match face changes
+    if (currentBlockGroupRef.current) {
+      const angle = activeFace * (Math.PI / 2);
+      targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+      currentBlockGroupRef.current.quaternion.slerp(targetQuaternion, 0.2);
+    }
+  });
+
   useFrame(() => {
     // Smooth rotation for the active block group to match face changes
     if (currentBlockGroupRef.current) {
@@ -240,9 +276,14 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
     let ghostY = currentBlock.position.y;
     const ghostBlockInstance = new TetrisBlock(currentBlock.type);
     ghostBlockInstance.shape = currentBlock.shape;
-    
+
     // Find the furthest valid 'y' position
-    while (isValidMove(grid, ghostBlockInstance, { x: currentBlock.position.x, y: ghostY + 1 })) {
+    while (
+      isValidMove(grid, ghostBlockInstance, {
+        x: currentBlock.position.x,
+        y: ghostY + 1,
+      })
+    ) {
       ghostY++;
     }
     ghostBlockInstance.position = { x: currentBlock.position.x, y: ghostY };
@@ -252,7 +293,7 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
   const renderBlock = (block: TetrisBlock, isGhost = false) => {
     const Component = isGhost ? GhostBlock3D : TetrisBlock3D;
     const color = isGhost ? "white" : block.color;
-    
+
     return block.shape.map((row, y) =>
       row.map((cell, x) => {
         if (cell !== 0) {
@@ -260,11 +301,19 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
           // All active and ghost blocks are rendered on the Z-plane corresponding to the front of the cube.
           // The `currentBlockGroupRef` rotation handles which face is "front".
           const position = new THREE.Vector3(
-            (block.position.x + x) * BLOCK_SIZE - BOARD_WIDTH / 2 + BLOCK_SIZE / 2,
-            (GRID_HEIGHT - (block.position.y + y)) * BLOCK_SIZE - BOARD_HEIGHT / 2 - BLOCK_SIZE / 2,
+            (block.position.x + x) * BLOCK_SIZE -
+              BOARD_WIDTH / 2 +
+              BLOCK_SIZE / 2,
+            (GRID_HEIGHT - (block.position.y + y)) * BLOCK_SIZE -
+              BOARD_HEIGHT / 2 -
+              BLOCK_SIZE / 2,
             BOARD_WIDTH / 2 // Correct Z-depth for the active face
           );
-          return <Component key={`${y}-${x}`} position={position} color={color} />;n        }
+          return (
+            <Component key={`${y}-${x}`} position={position} color={color} />
+          );
+          n;
+        }
         return null;
       })
     );
@@ -285,43 +334,14 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
         </group>
       </group>
       <EffectComposer>
-        <Bloom luminanceThreshold={0.1} luminanceSmoothing={0.9} intensity={1.5} />
+        <Bloom
+          luminanceThreshold={0.1}
+          luminanceSmoothing={0.9}
+          intensity={1.5}
+        />
       </EffectComposer>
     </>
   );
-};
-
-const AnimatedCamera = ({ activeFace }: { activeFace: number }) => {
-  const cameraRef = useRef<THREE.PerspectiveCamera>(null!);
-
-  const targetQuaternions = useMemo(
-    () => [
-      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0), // Face 0 (front)
-      new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(0, 1, 0),
-        Math.PI / 2
-      ), // Face 1 (right)
-      new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(0, 1, 0),
-        Math.PI
-      ), // Face 2 (back)
-      new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(0, 1, 0),
-        -Math.PI / 2
-      ), // Face 3 (left)
-    ],
-    []
-  );
-
-  useFrame((state) => {
-    // Correctly slerp the camera's quaternion
-    const targetQuaternion = targetQuaternions[activeFace];
-    if (targetQuaternion) {
-      state.camera.quaternion.slerp(targetQuaternion, 0.15);
-    }
-  });
-
-  return <perspectiveCamera ref={cameraRef} fov={60} position={[0, 0, 24]} />;
 };
 
 interface GameBoard3DProps {
@@ -330,7 +350,22 @@ interface GameBoard3DProps {
 }
 
 const GameBoard3D: React.FC<GameBoard3DProps> = ({ gameState, dispatch }) => {
-  const { isGameOver, nextBlock, activeFace } = gameState;
+  const { isGameOver, nextBlock } = gameState;
+
+  // Keyboard events for face switching and ghost toggle
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (gameState.isGameOver) return;
+      const key = event.key.toLowerCase();
+      if (key === "q")
+        dispatch({ type: "CHANGE_FACE", payload: { direction: "left" } });
+      else if (key === "e")
+        dispatch({ type: "CHANGE_FACE", payload: { direction: "right" } });
+      else if (key === "g") dispatch({ type: "TOGGLE_GHOST" });
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dispatch, gameState.isGameOver]);
 
   return (
     <div style={{ position: "relative", height: "100vh", width: "100vw" }}>
@@ -341,7 +376,6 @@ const GameBoard3D: React.FC<GameBoard3DProps> = ({ gameState, dispatch }) => {
         camera={{ fov: 60, position: [0, 0, 24] }} // Use a fixed position
       >
         <GameScene gameState={gameState} />
-        <AnimatedCamera activeFace={activeFace} />
         <GameBoardBoundary />
       </Canvas>
     </div>
