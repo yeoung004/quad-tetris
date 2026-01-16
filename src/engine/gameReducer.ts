@@ -104,8 +104,10 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
     case 'START_GAME':
         return {
             ...initialState,
+            grids: [createEmptyGrid(), createEmptyGrid(), createEmptyGrid(), createEmptyGrid()],
             currentBlock: spawnNewBlock(),
             isGameOver: false,
+            score: 0,
         };
     
     case 'SET_STATE':
