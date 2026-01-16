@@ -220,53 +220,29 @@ const GameBoardFace = ({
   );
 };
 
+const CAMERA_DISTANCE = 24;
+
 const GameScene = ({ gameState }: { gameState: GameState }) => {
   const { grids, activeFace, currentBlock, showGhost } = gameState;
   const currentBlockGroupRef = useRef<THREE.Group>(null!);
-  const targetQuaternion = useMemo(() => new THREE.Quaternion(), []);
 
-  const faceProperties = useMemo(() => {
-    const CAMERA_DISTANCE = 24; // Adjusted for a closer view
-    return [
-      {
-        camPos: new THREE.Vector3(0, 0, CAMERA_DISTANCE),
-        target: new THREE.Vector3(0, 0, 0),
-      },
-      {
-        camPos: new THREE.Vector3(CAMERA_DISTANCE, 0, 0),
-        target: new THREE.Vector3(0, 0, 0),
-      },
-      {
-        camPos: new THREE.Vector3(0, 0, -CAMERA_DISTANCE),
-        target: new THREE.Vector3(0, 0, 0),
-      },
-      {
-        camPos: new THREE.Vector3(-CAMERA_DISTANCE, 0, 0),
-        target: new THREE.Vector3(0, 0, 0),
-      },
-    ];
-  }, []);
+  const tempQuaternion = new THREE.Quaternion();
 
   useFrame((state) => {
-    // Smooth camera transition
-    const activeProps = faceProperties[activeFace];
-    state.camera.position.lerp(activeProps.camPos, 0.1);
-    state.camera.lookAt(activeProps.target);
+    const targetAngle = activeFace * (Math.PI / 2);
+    const targetRotation = new THREE.Euler(0, targetAngle, 0);
+    tempQuaternion.setFromEuler(targetRotation);
 
-    // Smooth rotation for the active block group to match face changes
-    if (currentBlockGroupRef.current) {
-      const angle = activeFace * (Math.PI / 2);
-      targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
-      currentBlockGroupRef.current.quaternion.slerp(targetQuaternion, 0.2);
-    }
-  });
+    state.camera.quaternion.slerp(tempQuaternion, 0.1);
 
-  useFrame(() => {
-    // Smooth rotation for the active block group to match face changes
+    state.camera.position
+      .set(0, 0, CAMERA_DISTANCE)
+      .applyQuaternion(state.camera.quaternion);
+
+    state.camera.lookAt(0, 0, 0);
+
     if (currentBlockGroupRef.current) {
-      const angle = activeFace * (Math.PI / 2);
-      targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
-      currentBlockGroupRef.current.quaternion.slerp(targetQuaternion, 0.2);
+      currentBlockGroupRef.current.quaternion.slerp(tempQuaternion, 0.2);
     }
   });
 
@@ -312,7 +288,6 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
           return (
             <Component key={`${y}-${x}`} position={position} color={color} />
           );
-          n;
         }
         return null;
       })
