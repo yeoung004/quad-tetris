@@ -16,6 +16,7 @@ export type GameState = {
   score: number;
   isGameOver: boolean;
   myFaces: number[];
+  showGhost: boolean;
 };
 
 export type GameAction =
@@ -25,7 +26,8 @@ export type GameAction =
   | { type: 'DROP_BLOCK' }
   | { type: 'START_GAME' }
   | { type: 'SET_FACE_ASSIGNMENTS', payload: number[] }
-  | { type: 'SET_STATE', payload: GameState };
+  | { type: 'SET_STATE', payload: GameState }
+  | { type: 'TOGGLE_GHOST' };
 
 const initialState: GameState = {
   grids: [createEmptyGrid(), createEmptyGrid(), createEmptyGrid(), createEmptyGrid()],
@@ -34,9 +36,10 @@ const initialState: GameState = {
   score: 0,
   isGameOver: false,
   myFaces: [0, 1, 2, 3],
+  showGhost: true,
 };
 
-function isValidMove(
+export function isValidMove(
   grid: (string | number)[][],
   block: TetrisBlock,
   newPosition: { x: number; y: number }
@@ -85,9 +88,8 @@ function placeBlock(state: GameState): GameState {
   const newGrids = [...grids];
   newGrids[activeFace] = newGrid;
 
-  // Check for game over
-  if (blockY === 0) {
-    return { ...state, grids: newGrids, isGameOver: true };
+  if (blockY < 1) {
+    return { ...state, grids: newGrids, isGameOver: true, currentBlock: null };
   }
 
   const newState: GameState = {
@@ -113,6 +115,12 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
     case 'SET_STATE':
         return action.payload;
 
+    case 'TOGGLE_GHOST':
+      return {
+        ...state,
+        showGhost: !state.showGhost,
+      };
+
     case 'MOVE_BLOCK':
       if (state.isGameOver || !state.currentBlock) return state;
       const { dx, dy } = action.payload;
@@ -126,7 +134,7 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
           ...state,
           currentBlock: { ...state.currentBlock, position: newPos },
         };
-      } else if (dy === 1) { // If moving down and it's not valid, place the block
+      } else if (dy === 1) {
         return placeBlock(state);
       }
       return state;
