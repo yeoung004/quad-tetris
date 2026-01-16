@@ -1,4 +1,4 @@
-import { GameState, GRID_WIDTH, createEmptyGrid } from './gameReducer';
+import { GameState, GRID_WIDTH } from './gameReducer';
 
 const POINTS_PER_LINE = 100;
 

@@ -16,6 +16,7 @@ const App: React.FC = () => {
     score: 0,
     isGameOver: false,
     myFaces: [0, 1, 2, 3],
+    showGhost: true,
   });
 
   useEffect(() => {
@@ -90,8 +91,6 @@ const App: React.FC = () => {
       <div style={infoStyles}>
         <p>Score: {gameState.score}</p>
         <p>Face: {gameState.activeFace}</p>
-        <p>My Faces: {gameState.myFaces.join(", ")}</p>
-        {gameState.isGameOver && <p style={{ color: "red" }}>GAME OVER</p>}
         <div>
           Controls:
           <br />

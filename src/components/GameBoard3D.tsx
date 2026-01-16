@@ -119,7 +119,7 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
 
   // Correct camera distance and FOV for a larger view
   const faceProperties = useMemo(() => {
-    const CAMERA_DISTANCE = 19; // Adjusted for a closer view
+    const CAMERA_DISTANCE = 24; // Adjusted for a closer view
     return [
       { camPos: new THREE.Vector3(0, 0, CAMERA_DISTANCE), target: new THREE.Vector3(0, 0, 0) },
       { camPos: new THREE.Vector3(CAMERA_DISTANCE, 0, 0), target: new THREE.Vector3(0, 0, 0) },
@@ -200,6 +200,11 @@ const GameScene = ({ gameState }: { gameState: GameState }) => {
     </>
   );
 };
+
+interface GameBoard3DProps {
+  gameState: GameState;
+  dispatch: React.Dispatch<GameAction>;
+}
 
 const GameBoard3D: React.FC<GameBoard3DProps> = ({ gameState, dispatch }) => {
   const { isGameOver } = gameState;

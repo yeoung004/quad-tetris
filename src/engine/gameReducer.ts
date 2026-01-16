@@ -130,9 +130,12 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
       };
 
       if (isValidMove(state.grids[state.activeFace], state.currentBlock, newPos)) {
+        const newBlock = new TetrisBlock(state.currentBlock.type);
+        newBlock.position = newPos;
+        newBlock.shape = state.currentBlock.shape;
         return {
           ...state,
-          currentBlock: { ...state.currentBlock, position: newPos },
+          currentBlock: newBlock,
         };
       } else if (dy === 1) {
         return placeBlock(state);
@@ -181,7 +184,11 @@ export function gameReducer(state: GameState = initialState, action: GameAction)
             newY++;
         }
         
-        const tempState = { ...state, currentBlock: {...state.currentBlock, position: {x: state.currentBlock.position.x, y: newY}}};
+        const newBlock = new TetrisBlock(state.currentBlock.type);
+        newBlock.position = {x: state.currentBlock.position.x, y: newY};
+        newBlock.shape = state.currentBlock.shape;
+        
+        const tempState = { ...state, currentBlock: newBlock};
 
         return placeBlock(tempState);
 
