@@ -1,4 +1,4 @@
-import { TetrisBlock } from './TetrisBlock';
+import { TetrisBlock } from "./TetrisBlock";
 
 export const GRID_WIDTH = 10;
 export const GRID_HEIGHT = 20;
@@ -19,8 +19,14 @@ export function isValidMove(
         const newX = newPosition.x + x;
         const newY = newPosition.y + y;
 
-        if (newX < 0 || newX >= GRID_WIDTH || newY >= GRID_HEIGHT || (grid[newY] && grid[newY][newX] !== 0)) {
+        if (newX < 0 || newX >= GRID_WIDTH || newY >= GRID_HEIGHT) {
           return false;
+        }
+
+        if (newY >= 0) {
+          if (grid[newY][newX] !== 0) {
+            return false;
+          }
         }
       }
     }

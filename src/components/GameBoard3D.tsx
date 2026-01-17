@@ -15,11 +15,7 @@ import {
   nextBlockAtom,
   showGhostAtom,
 } from "../atoms/gameAtoms";
-import {
-  GRID_HEIGHT,
-  GRID_WIDTH,
-  isValidMove,
-} from "../engine/grid";
+import { GRID_HEIGHT, GRID_WIDTH, isValidMove } from "../engine/grid";
 import { TetrisBlock, TETROMINOS } from "../engine/TetrisBlock";
 
 const BLOCK_SIZE = 1;
@@ -144,16 +140,48 @@ const NextBlockPreview = () => {
 const GameBoardBoundary = () => {
   const isFocusMode = useAtomValue(isFocusModeAtom);
 
+  const gridLines = useMemo(() => {
+    const lines = [];
+    const color = "#00ffff";
+    const opacity = 0.3;
+
+    for (let i = 0; i <= GRID_HEIGHT; i++) {
+      const y = i * BLOCK_SIZE - BOARD_HEIGHT / 2;
+      lines.push(
+        <mesh key={`h-${i}`} position={[0, y, BOARD_WIDTH / 2 + 0.01]}>
+          <planeGeometry args={[BOARD_WIDTH, 0.03]} />
+          <meshBasicMaterial color={color} transparent opacity={opacity} />
+        </mesh>
+      );
+    }
+
+    for (let i = 0; i <= GRID_WIDTH; i++) {
+      const x = i * BLOCK_SIZE - BOARD_WIDTH / 2;
+      lines.push(
+        <mesh key={`v-${i}`} position={[x, 0, BOARD_WIDTH / 2 + 0.01]}>
+          <planeGeometry args={[0.03, BOARD_HEIGHT]} />
+          <meshBasicMaterial color={color} transparent opacity={opacity} />
+        </mesh>
+      );
+    }
+    return lines;
+  }, []);
+
+  const activeFace = useAtomValue(activeFaceAtom);
+
   return (
     <group>
       <Box args={[BOARD_WIDTH, BOARD_HEIGHT, BOARD_WIDTH]}>
         <meshBasicMaterial
           transparent
-          opacity={isFocusMode ? 1 : 0.05}
+          opacity={isFocusMode ? 0.9 : 0.05}
           color={isFocusMode ? "#000000" : "#00ffff"}
+          side={THREE.DoubleSide}
         />
         <Edges threshold={15} color="#00ffff" />
       </Box>
+
+      <group rotation={[0, activeFace * (Math.PI / 2), 0]}>{gridLines}</group>
     </group>
   );
 };
@@ -339,9 +367,7 @@ const GameScene = () => {
         </group>
       </group>
       <EffectComposer>
-        <Bloom
-          luminanceSmoothing={0.9}
-        />
+        <Bloom luminanceSmoothing={0.9} />
       </EffectComposer>
     </>
   );
