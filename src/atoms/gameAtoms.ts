@@ -1,7 +1,12 @@
-import { atom } from 'jotai';
-import { TetrisBlock, TETROMINOS, TetrominoKey } from '../engine/TetrisBlock';
-import { createEmptyGrid, GRID_HEIGHT, GRID_WIDTH, isValidMove } from '../engine/grid';
-import { GameState } from '../types';
+import { atom } from "jotai";
+import { TetrisBlock, TetrominoKey, TETROMINOS } from "../engine/TetrisBlock";
+import {
+  createEmptyGrid,
+  GRID_HEIGHT,
+  GRID_WIDTH,
+  isValidMove,
+} from "../engine/grid";
+import { GameState } from "../types";
 
 // --- Helper Functions ---
 
@@ -10,18 +15,20 @@ const LINES_PER_LEVEL = 10;
 
 const spawnNewBlock = () => {
   const tetrominoKeys = Object.keys(TETROMINOS).filter(
-    (key) => key !== '0'
+    (key) => key !== "0"
   ) as TetrominoKey[];
   const randomType =
     tetrominoKeys[Math.floor(Math.random() * tetrominoKeys.length)];
   return new TetrisBlock(randomType);
 };
 
-
 // --- Primitive State Atoms ---
 
 export const gridsAtom = atom<(string | number)[][][]>([
-  createEmptyGrid(), createEmptyGrid(), createEmptyGrid(), createEmptyGrid(),
+  createEmptyGrid(),
+  createEmptyGrid(),
+  createEmptyGrid(),
+  createEmptyGrid(),
 ]);
 export const activeFaceAtom = atom(0);
 export const currentBlockAtom = atom<TetrisBlock | null>(null);
@@ -35,7 +42,6 @@ export const linesClearedAtom = atom(0);
 export const isLockingAtom = atom(false);
 export const isFocusModeAtom = atom(false);
 
-
 // --- Derived Read-only Atoms ---
 
 export const currentGridAtom = atom((get) => {
@@ -44,26 +50,32 @@ export const currentGridAtom = atom((get) => {
   return grids[activeFace];
 });
 
-export const gameStateAtom = atom((get): GameState => ({
-  grids: get(gridsAtom),
-  activeFace: get(activeFaceAtom),
-  currentBlock: get(currentBlockAtom),
-  nextBlock: get(nextBlockAtom),
-  score: get(scoreAtom),
-  isGameOver: get(isGameOverAtom),
-  myFaces: get(myFacesAtom),
-  showGhost: get(showGhostAtom),
-  level: get(levelAtom),
-  linesCleared: get(linesClearedAtom),
-  isLocking: get(isLockingAtom),
-  isFocusMode: get(isFocusModeAtom),
-}));
-
+export const gameStateAtom = atom(
+  (get): GameState => ({
+    grids: get(gridsAtom),
+    activeFace: get(activeFaceAtom),
+    currentBlock: get(currentBlockAtom),
+    nextBlock: get(nextBlockAtom),
+    score: get(scoreAtom),
+    isGameOver: get(isGameOverAtom),
+    myFaces: get(myFacesAtom),
+    showGhost: get(showGhostAtom),
+    level: get(levelAtom),
+    linesCleared: get(linesClearedAtom),
+    isLocking: get(isLockingAtom),
+    isFocusMode: get(isFocusModeAtom),
+  })
+);
 
 // --- Writable Action Atoms ---
 
 export const startGameAtom = atom(null, (_get, set) => {
-  set(gridsAtom, [createEmptyGrid(), createEmptyGrid(), createEmptyGrid(), createEmptyGrid()]);
+  set(gridsAtom, [
+    createEmptyGrid(),
+    createEmptyGrid(),
+    createEmptyGrid(),
+    createEmptyGrid(),
+  ]);
   set(activeFaceAtom, 0);
   set(currentBlockAtom, spawnNewBlock());
   set(nextBlockAtom, spawnNewBlock());
@@ -74,25 +86,28 @@ export const startGameAtom = atom(null, (_get, set) => {
   set(isLockingAtom, false);
 });
 
-export const moveBlockAtom = atom(null, (get, set, { dx, dy }: { dx: number; dy: number }) => {
-  const currentBlock = get(currentBlockAtom);
-  if (get(isGameOverAtom) || !currentBlock) return;
+export const moveBlockAtom = atom(
+  null,
+  (get, set, { dx, dy }: { dx: number; dy: number }) => {
+    const currentBlock = get(currentBlockAtom);
+    if (get(isGameOverAtom) || !currentBlock) return;
 
-  const newPos = {
-    x: currentBlock.position.x + dx,
-    y: currentBlock.position.y + dy,
-  };
+    const newPos = {
+      x: currentBlock.position.x + dx,
+      y: currentBlock.position.y + dy,
+    };
 
-  if (isValidMove(get(currentGridAtom), currentBlock, newPos)) {
-    const newBlock = new TetrisBlock(currentBlock.type);
-    newBlock.position = newPos;
-    newBlock.shape = currentBlock.shape;
-    set(currentBlockAtom, newBlock);
-    set(isLockingAtom, false);
-  } else if (dy === 1) {
-    set(isLockingAtom, true);
+    if (isValidMove(get(currentGridAtom), currentBlock, newPos)) {
+      const newBlock = new TetrisBlock(currentBlock.type);
+      newBlock.position = newPos;
+      newBlock.shape = currentBlock.shape;
+      set(currentBlockAtom, newBlock);
+      set(isLockingAtom, false);
+    } else if (dy === 1) {
+      set(isLockingAtom, true);
+    }
   }
-});
+);
 
 export const rotateBlockAtom = atom(null, (get, set) => {
   const currentBlock = get(currentBlockAtom);
@@ -109,22 +124,24 @@ export const rotateBlockAtom = atom(null, (get, set) => {
   }
 });
 
-export const changeFaceAtom = atom(null, (get, set, direction: 'left' | 'right') => {
-  if (get(isGameOverAtom)) return;
+export const changeFaceAtom = atom(
+  null,
+  (get, set, direction: "left" | "right") => {
+    if (get(isGameOverAtom)) return;
 
-  const myFaces = get(myFacesAtom);
-  const activeFace = get(activeFaceAtom);
-  let currentIndex = myFaces.indexOf(activeFace);
+    const myFaces = get(myFacesAtom);
+    const activeFace = get(activeFaceAtom);
+    let currentIndex = myFaces.indexOf(activeFace);
 
-  if (direction === 'right') {
-    currentIndex = (currentIndex + 1) % myFaces.length;
-  } else {
-    currentIndex = (currentIndex - 1 + myFaces.length) % myFaces.length;
+    if (direction === "right") {
+      currentIndex = (currentIndex + 1) % myFaces.length;
+    } else {
+      currentIndex = (currentIndex - 1 + myFaces.length) % myFaces.length;
+    }
+
+    set(activeFaceAtom, myFaces[currentIndex]);
   }
-  
-  set(activeFaceAtom, myFaces[currentIndex]);
-  set(isLockingAtom, false);
-});
+);
 
 export const placeBlockAtom = atom(null, (get, set) => {
   const currentBlock = get(currentBlockAtom);
@@ -141,7 +158,12 @@ export const placeBlockAtom = atom(null, (get, set) => {
       if (cell !== 0) {
         const gridX = blockX + x;
         const gridY = blockY + y;
-        if (gridY >= 0 && gridY < GRID_HEIGHT && gridX >= 0 && gridX < GRID_WIDTH) {
+        if (
+          gridY >= 0 &&
+          gridY < GRID_HEIGHT &&
+          gridX >= 0 &&
+          gridX < GRID_WIDTH
+        ) {
           newGrid[gridY][gridX] = currentBlock.type;
         }
       }
@@ -168,7 +190,10 @@ export const placeBlockAtom = atom(null, (get, set) => {
   if (numLinesCleared > 0) {
     const newTotalLinesCleared = get(linesClearedAtom) + numLinesCleared;
     set(linesClearedAtom, newTotalLinesCleared);
-    set(scoreAtom, get(scoreAtom) + numLinesCleared * POINTS_PER_LINE * numLinesCleared);
+    set(
+      scoreAtom,
+      get(scoreAtom) + numLinesCleared * POINTS_PER_LINE * numLinesCleared
+    );
     set(levelAtom, Math.floor(newTotalLinesCleared / LINES_PER_LEVEL) + 1);
   }
 
@@ -177,7 +202,13 @@ export const placeBlockAtom = atom(null, (get, set) => {
   set(nextBlockAtom, spawnNewBlock());
   set(isLockingAtom, false);
 
-  if (!isValidMove(get(currentGridAtom), get(currentBlockAtom)!, get(currentBlockAtom)!.position)) {
+  if (
+    !isValidMove(
+      get(currentGridAtom),
+      get(currentBlockAtom)!,
+      get(currentBlockAtom)!.position
+    )
+  ) {
     set(isGameOverAtom, true);
     set(currentBlockAtom, null);
   }
@@ -189,14 +220,16 @@ export const dropBlockAtom = atom(null, (get, set) => {
 
   const grid = get(currentGridAtom);
   let newY = currentBlock.position.y;
-  while (isValidMove(grid, currentBlock, { x: currentBlock.position.x, y: newY + 1 })) {
+  while (
+    isValidMove(grid, currentBlock, { x: currentBlock.position.x, y: newY + 1 })
+  ) {
     newY++;
   }
 
   const newBlock = new TetrisBlock(currentBlock.type);
   newBlock.position = { x: currentBlock.position.x, y: newY };
   newBlock.shape = currentBlock.shape;
-  
+
   set(currentBlockAtom, newBlock);
   set(placeBlockAtom); // placeBlockAtom is an action atom
 });
@@ -209,10 +242,12 @@ export const toggleFocusModeAtom = atom(null, (_get, set) => {
   set(isFocusModeAtom, (prev) => !prev);
 });
 
-export const setFaceAssignmentsAtom = atom(null, (get, set, faces: number[]) => {
-  set(myFacesAtom, faces);
-  if (!faces.includes(get(activeFaceAtom))) {
-    set(activeFaceAtom, faces[0] || 0);
+export const setFaceAssignmentsAtom = atom(
+  null,
+  (get, set, faces: number[]) => {
+    set(myFacesAtom, faces);
+    if (!faces.includes(get(activeFaceAtom))) {
+      set(activeFaceAtom, faces[0] || 0);
+    }
   }
-});
-
+);

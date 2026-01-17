@@ -43,36 +43,37 @@ const GameController = () => {
     [key: string]: { das?: number; arr?: number };
   }>({});
 
-
   // Start the game on mount
   useEffect(() => {
     startGame();
   }, [startGame]);
 
-  // Game Loop for block falling
   useEffect(() => {
-    if (isGameOver || !myFaces.includes(activeFace) || isLocking) {
+    if (isGameOver || !myFaces.includes(activeFace)) {
       return;
     }
+    const calculateDelay = (lvl: number) => {
+      const startSpeed = 500;
+      const step = 70;
+      const minDelay = 60;
+      return Math.max(minDelay, startSpeed - (lvl - 1) * step);
+    };
 
-    const delay = Math.max(
-      100,
-      1000 * Math.pow(0.8 - (level - 1) * 0.007, level - 1)
-    );
+    const currentDelay = calculateDelay(level);
 
     const gameInterval = setInterval(() => {
       moveBlock({ dx: 0, dy: 1 });
-    }, delay);
-
+    }, currentDelay);
+ 
     return () => clearInterval(gameInterval);
-  }, [isGameOver, myFaces, activeFace, level, isLocking, moveBlock]);
+  }, [isGameOver, myFaces, activeFace, level, moveBlock]);
 
   // Lock Delay Timer
   useEffect(() => {
     if (isLocking) {
       const lockTimeout = setTimeout(() => {
         placeBlock();
-      }, 500);
+      }, 100);
 
       return () => clearTimeout(lockTimeout);
     }
@@ -85,7 +86,10 @@ const GameController = () => {
       if (e.repeat) return;
 
       if (isGameOver && e.key !== " ") return;
-      if (!myFaces.includes(activeFace) && !["q", "e", "f", "g"].includes(e.key)) {
+      if (
+        !myFaces.includes(activeFace) &&
+        !["q", "e", "f", "g"].includes(e.key)
+      ) {
         return;
       }
 
@@ -108,17 +112,17 @@ const GameController = () => {
         case "ArrowRight":
         case "ArrowDown":
           moveAction(e.key); // Initial move on first press
-                    const dasTimer = window.setTimeout(() => {
-                      // If key was released before the DAS timeout finished, do nothing.
-                      if (!moveTimers.current[e.key]) {
-                        return;
-                      }
-                      moveAction(e.key); // First move after DAS delay
-                      const arrTimer = window.setInterval(() => {
-                        moveAction(e.key); // Subsequent moves at ARR
-                      }, ARR);
-                      moveTimers.current[e.key].arr = arrTimer; // Store interval timer
-                    }, DAS_DELAY);
+          const dasTimer = window.setTimeout(() => {
+            // If key was released before the DAS timeout finished, do nothing.
+            if (!moveTimers.current[e.key]) {
+              return;
+            }
+            moveAction(e.key); // First move after DAS delay
+            const arrTimer = window.setInterval(() => {
+              moveAction(e.key); // Subsequent moves at ARR
+            }, ARR);
+            moveTimers.current[e.key].arr = arrTimer; // Store interval timer
+          }, DAS_DELAY);
           moveTimers.current[e.key] = { das: dasTimer }; // Store timeout timer
           break;
         case "ArrowUp":
@@ -149,8 +153,10 @@ const GameController = () => {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (["ArrowLeft", "ArrowRight", "ArrowDown"].includes(e.key)) {
         if (moveTimers.current[e.key]) {
-          if (moveTimers.current[e.key].das) window.clearTimeout(moveTimers.current[e.key].das!);
-          if (moveTimers.current[e.key].arr) window.clearInterval(moveTimers.current[e.key].arr!);
+          if (moveTimers.current[e.key].das)
+            window.clearTimeout(moveTimers.current[e.key].das!);
+          if (moveTimers.current[e.key].arr)
+            window.clearInterval(moveTimers.current[e.key].arr!);
           delete moveTimers.current[e.key];
         }
       }
@@ -164,8 +170,10 @@ const GameController = () => {
       window.removeEventListener("keyup", handleKeyUp);
       // Clear all timers on unmount
       Object.keys(moveTimers.current).forEach((key) => {
-        if (moveTimers.current[key]?.das) window.clearTimeout(moveTimers.current[key].das!);
-        if (moveTimers.current[key]?.arr) window.clearInterval(moveTimers.current[key].arr!);
+        if (moveTimers.current[key]?.das)
+          window.clearTimeout(moveTimers.current[key].das!);
+        if (moveTimers.current[key]?.arr)
+          window.clearInterval(moveTimers.current[key].arr!);
       });
     };
   }, [

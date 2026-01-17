@@ -1,19 +1,13 @@
-import React from "react";
 import { useAtomValue } from "jotai";
+import React from "react";
+import { activeFaceAtom, levelAtom, scoreAtom } from "./atoms/gameAtoms";
 import GameBoard3D from "./components/GameBoard3D";
-import KeyHints from "./components/KeyHints";
 import GameController from "./components/GameController";
-import {
-  scoreAtom,
-  levelAtom,
-  linesClearedAtom,
-  activeFaceAtom,
-} from "./atoms/gameAtoms";
+import KeyHints from "./components/KeyHints";
 
 const App: React.FC = () => {
   const score = useAtomValue(scoreAtom);
   const level = useAtomValue(levelAtom);
-  const linesCleared = useAtomValue(linesClearedAtom);
   const activeFace = useAtomValue(activeFaceAtom);
 
   const infoStyles: React.CSSProperties = {
@@ -37,7 +31,6 @@ const App: React.FC = () => {
       <div style={infoStyles}>
         <p>Score: {score}</p>
         <p>Level: {level}</p>
-        <p>Lines: {linesCleared}</p>
         <p>Face: {activeFace}</p>
       </div>
       <KeyHints />
