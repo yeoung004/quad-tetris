@@ -57,7 +57,7 @@ const GameOverOverlay = () => {
   const h1Style: React.CSSProperties = {
     fontSize: "clamp(2rem, 10vw, 5rem)",
     marginBottom: "1rem",
-    letterSpacing: "0.5rem",
+    letterSpacing: "0.2rem",
     textAlign: "center",
     textTransform: "uppercase",
     animation: "flicker 1.5s infinite alternate",

@@ -51,7 +51,7 @@
 ### `src/components/GameController.tsx`
 - **주요 역할**: 게임의 "엔진" 역할을 수행하는 보이지 않는(non-rendering) 컴포넌트입니다. 게임 루프, 키보드 입력, 락 딜레이 등 모든 사이드 이펙트를 처리합니다.
 - **핵심 로직**:
-    - ... (기존 내용)
+    - 키보드 이벤트 핸들러(`keydown`, `keyup`)가 포함되어 있습니다. 한/영키 등 입력기 상태에 관계없이 일관된 조작을 보장하기 위해 `event.key` 대신 **`event.code`**를 사용하여 물리적 키 입력을 감지합니다.
     - `useAtomValue`로 `isGameOver`, `level`, 그리고 **`isInputLockedAtom`** 등의 상태를 구독하여 로직에 사용합니다. `isInputLocked`가 `true`이면, '자비의 시간' 동안 모든 키보드 입력을 차단하여 안정성을 확보합니다.
 
 ### `src/components/GameBoard3D.tsx`
@@ -60,7 +60,7 @@
     - `useAtomValue`를 사용하여 렌더링에 필요한 상태(`gridsAtom`, `currentBlockAtom` 등)와 **`isWarningAtom`**, **`collisionBlockAtom`**을 구독합니다.
     - **Collision Warning (충돌 경고 연출)**: `isWarning` 상태가 되면, 일반 `currentBlock` 대신 `collisionBlock`을 `CollisionBlock3D`라는 특수 컴포넌트로 렌더링합니다. 이 컴포넌트는 강렬한 붉은색 네온 재질을 `useFrame` 훅으로 깜빡이게 하여 충돌 지점을 시각적으로 강조합니다.
     - **Death UI Effects (사망 연출 효과)**: `isWarning` 상태 동안, `useFrame` 훅을 통해 카메라를 미세하게 흔드는 **카메라 셰이크(Camera Shake)** 효과와, `@react-three/postprocessing` 라이브러리의 `Vignette`(붉은색), `Noise` 효과를 활성화하여 사용자에게 위험 상황을 극적으로 전달합니다.
-    - **GameOverOverlay**: `isGameOverAtom`이 `true`가 되면 활성화됩니다. 단순한 텍스트 대신, 사이버펑크 스타일의 디자인(네온, 글리치 텍스트)과 "COLLISION DETECTED" 같은 구체적인 메시지를 `gameOverMessageAtom`으로부터 받아 표시하여 몰입감을 높입니다.
+    - **GameOverOverlay**: `isGameOverAtom`이 `true`가 되면 활성화됩니다. 모든 게임 오버 상황에서 통일된 **"GAME OVER"** 메시지를 사이버펑크 스타일(네온, 글리치 텍스트)로 표시하여 몰입감과 일관성을 높입니다.
 
 ### `src/engine/grid.ts`
 - **주요 역할**: 기존 `gameReducer.ts`에서 순수 로직 부분만 분리한 유틸리티 파일입니다. 그리드 생성, 충돌 검사 등 상태와 무관한 함수들을 포함합니다.
@@ -76,11 +76,11 @@
 - **정의**: 사용자가 왜 게임오버가 되었는지 명확히 인지할 수 있도록 도입된 UX 개선 메커니즘입니다. 블록이 다른 블록과 겹치거나 맵을 벗어나는 등 `isValidMove`가 `false`를 반환하는 모든 상황에서 즉시 게임이 종료되지 않고, 짧은 '자비의 시간'이 주어집니다.
 - **로직 흐름**:
     1. **사용자 입력/게임 로직**: `moveBlockAtom`, `rotateBlockAtom`, `changeFaceAtom` 등에서 이동/회전 후의 위치가 유효하지 않음(`isValidMove`가 `false`)을 감지합니다.
-    2. **충돌 경고 발동 (`triggerCollisionWarningAtom`)**: 즉시 `isGameOverAtom`을 `true`로 설정하는 대신, `triggerCollisionWarningAtom` 액션을 호출합니다. 이 액션은 다음 상태들을 설정합니다:
+    2. **충돌 경고 발동 (`triggerCollisionWarningAtom`)**: 즉시 `isGameOverAtom`을 `true`로 설정하는 대신, 충돌한 블록을 인자로 `triggerCollisionWarningAtom` 액션을 호출합니다. 이 액션은 다음 상태들을 설정합니다:
         - `isWarningAtom`: `true`로 설정하여 시각적 경고 연출을 시작합니다.
         - `isInputLockedAtom`: `true`로 설정하여 약 800ms의 경고 시간 동안 추가 입력을 막습니다.
         - `collisionBlockAtom`: 충돌이 발생한 위치의 블록 정보를 저장합니다.
-        - `gameOverMessageAtom`: "COLLISION DETECTED" 등 구체적인 충돌 원인을 설정합니다.
+        - `gameOverMessageAtom`: 메시지를 "GAME OVER"로 설정합니다.
     3. **시각적 피드백 (`GameBoard3D.tsx`)**:
         - `isWarningAtom`의 값이 `true`가 되면, `GameBoard3D`는 `collisionBlock`을 붉게 깜빡이는 재질로 렌더링합니다.
         - 동시에 카메라 셰이크, 붉은 비네트, 노이즈 효과가 장면에 적용됩니다.

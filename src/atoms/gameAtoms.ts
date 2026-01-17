@@ -77,13 +77,13 @@ export const gameStateAtom = atom(
 
 export const triggerCollisionWarningAtom = atom(
   null,
-  (get, set, { block, message }: { block: TetrisBlock; message: string }) => {
+  (get, set, block: TetrisBlock) => {
     if (get(isWarningAtom) || get(isGameOverAtom)) return;
 
     set(isInputLockedAtom, true);
     set(collisionBlockAtom, block);
     set(isWarningAtom, true);
-    set(gameOverMessageAtom, message);
+    set(gameOverMessageAtom, "GAME OVER"); // Message is now consistent
 
     setTimeout(() => {
       set(isGameOverAtom, true);
@@ -137,7 +137,7 @@ export const moveBlockAtom = atom(
 
     if (!isValidMove(currentGrid, currentBlock, currentBlock.position)) {
       set(isGameOverAtom, true);
-      set(gameOverMessageAtom, "COLLISION!");
+      set(gameOverMessageAtom, "GAME OVER");
       // We might want to set the block to null to make the collision more visible
       set(currentBlockAtom, null);
       return; // Stop execution to prevent face change
@@ -165,10 +165,7 @@ export const rotateBlockAtom = atom(null, (get, set) => {
     set(currentBlockAtom, rotatedBlock);
     set(isLockingAtom, false);
   } else {
-    set(triggerCollisionWarningAtom, {
-      block: rotatedBlock,
-      message: "ROTATION BLOCKED",
-    });
+    set(triggerCollisionWarningAtom, rotatedBlock);
   }
 });
 
@@ -260,9 +257,8 @@ export const placeBlockAtom = atom(null, (get, set) => {
       freshCurrentBlock.position
     )
   ) {
-    const message = "SYSTEM OVERLOAD // BLOCK-OUT";
     // The new block is the one that's colliding
-    set(triggerCollisionWarningAtom, { block: freshCurrentBlock, message });
+    set(triggerCollisionWarningAtom, freshCurrentBlock);
   }
 });
 

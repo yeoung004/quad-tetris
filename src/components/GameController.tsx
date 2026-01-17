@@ -84,21 +84,24 @@ const GameController = () => {
   // Keyboard controls with DAS
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Using event.code bypasses issues with IME (e.g., Korean input) and
+      // makes the controls dependent on the physical key location.
+      // The user's request to ignore `isComposing` is implicitly handled by this change.
       if (isInputLocked) return; // Lock all inputs during warning
 
       // Ignore all browser repeat events; we handle it ourselves.
       if (e.repeat) return;
       
-      if (isGameOver && e.key !== " ") return;
+      if (isGameOver && e.code !== "Space") return;
       if (
         !myFaces.includes(activeFace) &&
-        !["q", "e", "f", "g"].includes(e.key)
+        !["KeyQ", "KeyE", "KeyF", "KeyG"].includes(e.code)
       ) {
         return;
       }
 
-      const moveAction = (key: string) => {
-        switch (key) {
+      const moveAction = (code: string) => {
+        switch (code) {
           case "ArrowLeft":
             moveBlock({ dx: -1, dy: 0 });
             break;
@@ -111,57 +114,57 @@ const GameController = () => {
         }
       };
 
-      switch (e.key) {
+      switch (e.code) {
         case "ArrowLeft":
         case "ArrowRight":
         case "ArrowDown":
-          moveAction(e.key); // Initial move on first press
+          moveAction(e.code); // Initial move on first press
           const dasTimer = window.setTimeout(() => {
             // If key was released before the DAS timeout finished, do nothing.
-            if (!moveTimers.current[e.key]) {
+            if (!moveTimers.current[e.code]) {
               return;
             }
-            moveAction(e.key); // First move after DAS delay
+            moveAction(e.code); // First move after DAS delay
             const arrTimer = window.setInterval(() => {
-              moveAction(e.key); // Subsequent moves at ARR
+              moveAction(e.code); // Subsequent moves at ARR
             }, ARR);
-            moveTimers.current[e.key].arr = arrTimer; // Store interval timer
+            moveTimers.current[e.code].arr = arrTimer; // Store interval timer
           }, DAS_DELAY);
-          moveTimers.current[e.key] = { das: dasTimer }; // Store timeout timer
+          moveTimers.current[e.code] = { das: dasTimer }; // Store timeout timer
           break;
         case "ArrowUp":
           rotateBlock();
           break;
-        case " ": // Space bar
+        case "Space": // Space bar
           if (isGameOver) {
             startGame();
           } else {
             dropBlock();
           }
           break;
-        case "q":
+        case "KeyQ":
           changeFace("left");
           break;
-        case "e":
+        case "KeyE":
           changeFace("right");
           break;
-        case "g":
+        case "KeyG":
           toggleGhost();
           break;
-        case "f":
+        case "KeyF":
           toggleFocusMode();
           break;
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (["ArrowLeft", "ArrowRight", "ArrowDown"].includes(e.key)) {
-        if (moveTimers.current[e.key]) {
-          if (moveTimers.current[e.key].das)
-            window.clearTimeout(moveTimers.current[e.key].das!);
-          if (moveTimers.current[e.key].arr)
-            window.clearInterval(moveTimers.current[e.key].arr!);
-          delete moveTimers.current[e.key];
+      if (["ArrowLeft", "ArrowRight", "ArrowDown"].includes(e.code)) {
+        if (moveTimers.current[e.code]) {
+          if (moveTimers.current[e.code].das)
+            window.clearTimeout(moveTimers.current[e.code].das!);
+          if (moveTimers.current[e.code].arr)
+            window.clearInterval(moveTimers.current[e.code].arr!);
+          delete moveTimers.current[e.code];
         }
       }
     };
