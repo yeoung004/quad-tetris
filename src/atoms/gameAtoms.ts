@@ -35,13 +35,16 @@ export const currentBlockAtom = atom<TetrisBlock | null>(null);
 export const nextBlockAtom = atom<TetrisBlock | null>(null);
 export const scoreAtom = atom(0);
 export const isGameOverAtom = atom(false);
-export const gameOverMessageAtom = atom('GAME OVER');
+export const gameOverMessageAtom = atom("GAME OVER");
 export const myFacesAtom = atom<number[]>([0, 1, 2, 3]);
 export const showGhostAtom = atom(true);
 export const levelAtom = atom(1);
 export const linesClearedAtom = atom(0);
 export const isLockingAtom = atom(false);
 export const isFocusModeAtom = atom(false);
+export const isWarningAtom = atom(false);
+export const isInputLockedAtom = atom(false);
+export const collisionBlockAtom = atom<TetrisBlock | null>(null);
 
 // --- Derived Read-only Atoms ---
 
@@ -65,10 +68,31 @@ export const gameStateAtom = atom(
     linesCleared: get(linesClearedAtom),
     isLocking: get(isLockingAtom),
     isFocusMode: get(isFocusModeAtom),
+    isWarning: get(isWarningAtom),
+    collisionBlock: get(collisionBlockAtom),
   })
 );
 
 // --- Writable Action Atoms ---
+
+export const triggerCollisionWarningAtom = atom(
+  null,
+  (get, set, { block, message }: { block: TetrisBlock; message: string }) => {
+    if (get(isWarningAtom) || get(isGameOverAtom)) return;
+
+    set(isInputLockedAtom, true);
+    set(collisionBlockAtom, block);
+    set(isWarningAtom, true);
+    set(gameOverMessageAtom, message);
+
+    setTimeout(() => {
+      set(isGameOverAtom, true);
+      set(isWarningAtom, false);
+      set(isInputLockedAtom, false);
+      set(currentBlockAtom, null);
+    }, 800);
+  }
+);
 
 export const startGameAtom = atom(null, (_get, set) => {
   set(gridsAtom, [
@@ -85,25 +109,42 @@ export const startGameAtom = atom(null, (_get, set) => {
   set(levelAtom, 1);
   set(linesClearedAtom, 0);
   set(isLockingAtom, false);
-  set(gameOverMessageAtom, 'GAME OVER');
+  set(isWarningAtom, false);
+  set(isInputLockedAtom, false);
+  set(collisionBlockAtom, null);
+  set(gameOverMessageAtom, "GAME OVER");
 });
 
 export const moveBlockAtom = atom(
   null,
   (get, set, { dx, dy }: { dx: number; dy: number }) => {
     const currentBlock = get(currentBlockAtom);
-    if (get(isGameOverAtom) || !currentBlock) return;
+    const isGameOver = get(isGameOverAtom);
+    const isInputLocked = get(isInputLockedAtom);
+
+    if (isGameOver || isInputLocked || !currentBlock) return;
 
     const newPos = {
       x: currentBlock.position.x + dx,
       y: currentBlock.position.y + dy,
     };
 
-    if (isValidMove(get(currentGridAtom), currentBlock, newPos)) {
-      const newBlock = new TetrisBlock(currentBlock.type);
-      newBlock.position = newPos;
-      newBlock.shape = currentBlock.shape;
-      set(currentBlockAtom, newBlock);
+    const nextBlock = new TetrisBlock(currentBlock.type);
+    nextBlock.position = newPos;
+    nextBlock.shape = currentBlock.shape;
+
+    const currentGrid = get(currentGridAtom);
+
+    if (!isValidMove(currentGrid, currentBlock, currentBlock.position)) {
+      set(isGameOverAtom, true);
+      set(gameOverMessageAtom, "COLLISION!");
+      // We might want to set the block to null to make the collision more visible
+      set(currentBlockAtom, null);
+      return; // Stop execution to prevent face change
+    }
+
+    if (isValidMove(currentGrid, nextBlock, newPos)) {
+      set(currentBlockAtom, nextBlock);
       set(isLockingAtom, false);
     } else if (dy === 1) {
       set(isLockingAtom, true);
@@ -113,7 +154,7 @@ export const moveBlockAtom = atom(
 
 export const rotateBlockAtom = atom(null, (get, set) => {
   const currentBlock = get(currentBlockAtom);
-  if (get(isGameOverAtom) || !currentBlock) return;
+  if (get(isGameOverAtom) || get(isInputLockedAtom) || !currentBlock) return;
 
   const rotatedBlock = new TetrisBlock(currentBlock.type);
   rotatedBlock.position = currentBlock.position;
@@ -123,15 +164,19 @@ export const rotateBlockAtom = atom(null, (get, set) => {
   if (isValidMove(get(currentGridAtom), rotatedBlock, rotatedBlock.position)) {
     set(currentBlockAtom, rotatedBlock);
     set(isLockingAtom, false);
+  } else {
+    set(triggerCollisionWarningAtom, {
+      block: rotatedBlock,
+      message: "ROTATION BLOCKED",
+    });
   }
 });
 
 export const changeFaceAtom = atom(
   null,
   (get, set, direction: "left" | "right") => {
-    const isGameOver = get(isGameOverAtom);
     const currentBlock = get(currentBlockAtom);
-    if (isGameOver || !currentBlock) return;
+    if (get(isGameOverAtom) || get(isInputLockedAtom) || !currentBlock) return;
 
     const myFaces = get(myFacesAtom);
     const activeFace = get(activeFaceAtom);
@@ -143,15 +188,6 @@ export const changeFaceAtom = atom(
       currentIndex = (currentIndex - 1 + myFaces.length) % myFaces.length;
     }
     const newActiveFace = myFaces[currentIndex];
-    const newGrid = get(gridsAtom)[newActiveFace];
-
-    if (!isValidMove(newGrid, currentBlock, currentBlock.position)) {
-      set(isGameOverAtom, true);
-      set(gameOverMessageAtom, 'COLLISION!');
-      // We might want to set the block to null to make the collision more visible
-      set(currentBlockAtom, null); 
-      return; // Stop execution to prevent face change
-    }
 
     set(activeFaceAtom, newActiveFace);
   }
@@ -216,16 +252,17 @@ export const placeBlockAtom = atom(null, (get, set) => {
   set(nextBlockAtom, spawnNewBlock());
   set(isLockingAtom, false);
 
+  const freshCurrentBlock = get(currentBlockAtom)!;
   if (
     !isValidMove(
       get(currentGridAtom),
-      get(currentBlockAtom)!,
-      get(currentBlockAtom)!.position
+      freshCurrentBlock,
+      freshCurrentBlock.position
     )
   ) {
-    set(isGameOverAtom, true);
-    set(gameOverMessageAtom, 'GAME OVER');
-    set(currentBlockAtom, null);
+    const message = "SYSTEM OVERLOAD // BLOCK-OUT";
+    // The new block is the one that's colliding
+    set(triggerCollisionWarningAtom, { block: freshCurrentBlock, message });
   }
 });
 

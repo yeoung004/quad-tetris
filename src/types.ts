@@ -13,4 +13,6 @@ export type GameState = {
   linesCleared: number;
   isLocking: boolean;
   isFocusMode: boolean;
+  isWarning: boolean;
+  collisionBlock: TetrisBlock | null;
 };

@@ -1,16 +1,18 @@
 import { Box, Edges } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Bloom, EffectComposer } from "@react-three/postprocessing";
+import { Bloom, EffectComposer, Vignette, Noise } from "@react-three/postprocessing";
 import { useAtomValue } from "jotai";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   activeFaceAtom,
+  collisionBlockAtom,
   currentBlockAtom,
   gameOverMessageAtom,
   gridsAtom,
   isFocusModeAtom,
   isGameOverAtom,
+  isWarningAtom,
   levelAtom,
   nextBlockAtom,
   showGhostAtom,
@@ -28,12 +30,9 @@ const GameOverOverlay = () => {
   const gameOverMessage = useAtomValue(gameOverMessageAtom);
 
   useEffect(() => {
-    const blinker = setInterval(() => setShowText((prev) => !prev), 700);
+    const blinker = setInterval(() => setShowText((prev) => !prev), 500);
     return () => clearInterval(blinker);
   }, []);
-
-  // The keydown listener for restarting is now in GameController.tsx
-  // This component is now purely for display.
 
   const overlayStyle: React.CSSProperties = {
     position: "absolute",
@@ -41,32 +40,58 @@ const GameOverOverlay = () => {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    backgroundColor: "rgba(10, 0, 0, 0.75)",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
-    color: "#00ffff",
+    color: "#ff003c",
     fontFamily: "'Cutive Mono', 'Courier New', monospace",
     zIndex: 100,
-    textShadow: "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff",
+    textShadow:
+      "0 0 5px #ff003c, 0 0 10px #ff003c, 0 0 20px #ff003c, 0 0 40px #ff003c",
+    backdropFilter: "blur(3px)",
+    border: "2px solid #ff003c",
+    boxShadow: "inset 0 0 20px #ff003c, 0 0 20px #ff003c",
   };
   const h1Style: React.CSSProperties = {
-    fontSize: "5rem",
+    fontSize: "clamp(2rem, 10vw, 5rem)",
     marginBottom: "1rem",
     letterSpacing: "0.5rem",
+    textAlign: "center",
+    textTransform: "uppercase",
+    animation: "flicker 1.5s infinite alternate",
   };
   const pStyle: React.CSSProperties = {
-    fontSize: "1.5rem",
-    transition: "opacity 0.7s ease-in-out",
-    opacity: showText ? 1 : 0.2,
+    fontSize: "clamp(1rem, 5vw, 1.5rem)",
+    transition: "opacity 0.5s ease-in-out",
+    opacity: showText ? 1 : 0.3,
+    textTransform: "uppercase",
   };
+  const keyframes = `
+    @keyframes flicker {
+      0%, 18%, 22%, 25%, 53%, 57%, 100% {
+        text-shadow:
+          0 0 4px #ff003c,
+          0 0 11px #ff003c,
+          0 0 19px #ff003c,
+          0 0 40px #ff003c,
+          0 0 80px #ff003c;
+      }
+      20%, 24%, 55% {
+        text-shadow: none;
+      }
+    }
+  `;
 
   return (
-    <div style={overlayStyle}>
-      <h1 style={h1Style}>{gameOverMessage}</h1>
-      <p style={pStyle}>PRESS [SPACE] TO RESTART</p>
-    </div>
+    <>
+      <style>{keyframes}</style>
+      <div style={overlayStyle}>
+        <h1 style={h1Style}>{gameOverMessage}</h1>
+        <p style={pStyle}>PRESS [SPACE] TO RESTART</p>
+      </div>
+    </>
   );
 };
 
@@ -208,6 +233,33 @@ const TetrisBlock3D = ({
   </Box>
 );
 
+const CollisionBlock3D = ({
+  position,
+}: {
+  position: THREE.Vector3;
+}) => {
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null!);
+  const color = "#ff0000"; // Intense Red
+
+  useFrame(({ clock }) => {
+    // Create a smooth, intense pulse effect
+    const intensity = (Math.sin(clock.elapsedTime * 10) + 1) / 2; // 0 to 1
+    materialRef.current.emissiveIntensity = 2.0 + intensity * 8.0; // Pulse from 2.0 to 10.0
+  });
+
+  return (
+    <Box args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} position={position}>
+      <meshStandardMaterial
+        ref={materialRef}
+        color={color}
+        emissive={color}
+        toneMapped={false}
+      />
+      <Edges threshold={15} color={color} />
+    </Box>
+  );
+};
+
 const GhostBlock3D = ({ position }: { position: THREE.Vector3 }) => (
   <Box args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} position={position}>
     <meshBasicMaterial
@@ -277,21 +329,39 @@ const GameScene = () => {
   const currentBlock = useAtomValue(currentBlockAtom);
   const showGhost = useAtomValue(showGhostAtom);
   const isFocusMode = useAtomValue(isFocusModeAtom);
+  const isWarning = useAtomValue(isWarningAtom);
+  const collisionBlock = useAtomValue(collisionBlockAtom);
 
   const currentBlockGroupRef = useRef<THREE.Group>(null!);
   const tempQuaternion = new THREE.Quaternion();
+  const warningStartTime = useRef(0);
+  const camera = useRef<THREE.PerspectiveCamera>(null!);
 
-  useFrame((state) => {
+  useEffect(() => {
+    if (isWarning) {
+      warningStartTime.current = performance.now();
+    }
+  }, [isWarning]);
+
+  useFrame((state, delta) => {
     const targetAngle = activeFace * (Math.PI / 2);
     const targetRotation = new THREE.Euler(0, targetAngle, 0);
     tempQuaternion.setFromEuler(targetRotation);
 
     state.camera.quaternion.slerp(tempQuaternion, 0.1);
 
-    state.camera.position
-      .set(0, 0, CAMERA_DISTANCE)
-      .applyQuaternion(state.camera.quaternion);
+    const basePosition = new THREE.Vector3(0, 0, CAMERA_DISTANCE).applyQuaternion(state.camera.quaternion);
 
+    if (isWarning) {
+      const elapsedTime = performance.now() - warningStartTime.current;
+      const decay = Math.max(0, 1 - elapsedTime / 800);
+      const shakeIntensity = 0.2 * decay * decay; // Use ease-out (quadratic)
+      
+      basePosition.x += (Math.random() - 0.5) * shakeIntensity;
+      basePosition.y += (Math.random() - 0.5) * shakeIntensity;
+    }
+    
+    state.camera.position.lerp(basePosition, 0.5);
     state.camera.lookAt(0, 0, 0);
 
     if (currentBlockGroupRef.current) {
@@ -318,7 +388,7 @@ const GameScene = () => {
     return ghostBlockInstance;
   }, [currentBlock, activeFace, grids, showGhost]);
 
-  const renderBlock = (block: TetrisBlock, isGhost = false) => {
+  const renderBlock = (block: TetrisBlock, isGhost = false, isCollision = false) => {
     return block.shape.map((row: (string | number)[], y: number) =>
       row.map((cell: string | number, x: number) => {
         if (cell !== 0) {
@@ -331,6 +401,9 @@ const GameScene = () => {
               BLOCK_SIZE / 2,
             BOARD_WIDTH / 2
           );
+          if (isCollision) {
+            return <CollisionBlock3D key={`${y}-${x}`} position={position} />;
+          }
           if (isGhost) {
             return <GhostBlock3D key={`${y}-${x}`} position={position} />;
           }
@@ -362,16 +435,25 @@ const GameScene = () => {
           />
         ))}
         <group ref={currentBlockGroupRef}>
-          {currentBlock && renderBlock(currentBlock)}
-          {calculateGhostPosition && renderBlock(calculateGhostPosition, true)}
+          {!isWarning && currentBlock && renderBlock(currentBlock)}
+          {isWarning && collisionBlock && renderBlock(collisionBlock, false, true)}
+          {!isWarning && calculateGhostPosition && renderBlock(calculateGhostPosition, true)}
         </group>
       </group>
       <EffectComposer>
-        <Bloom luminanceSmoothing={0.9} />
+        <Bloom luminanceThreshold={0.3} luminanceSmoothing={0.9} height={300} />
+        <Noise premultiply opacity={isWarning ? 0.25 : 0} />
+        <Vignette
+          eskil={false}
+          offset={isWarning ? 0.2 : 0.5}
+          darkness={isWarning ? 1.2 : 0.5}
+          color="#ff0000"
+        />
       </EffectComposer>
     </>
   );
 };
+
 
 const LevelUpOverlay = () => {
   const overlayStyle: React.CSSProperties = {

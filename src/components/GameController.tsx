@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   isGameOverAtom,
+  isInputLockedAtom,
   myFacesAtom,
   activeFaceAtom,
   levelAtom,
@@ -33,6 +34,7 @@ const GameController = () => {
   const toggleFocusMode = useSetAtom(toggleFocusModeAtom);
 
   const isGameOver = useAtomValue(isGameOverAtom);
+  const isInputLocked = useAtomValue(isInputLockedAtom);
   const myFaces = useAtomValue(myFacesAtom);
   const activeFace = useAtomValue(activeFaceAtom);
   const level = useAtomValue(levelAtom);
@@ -49,7 +51,7 @@ const GameController = () => {
   }, [startGame]);
 
   useEffect(() => {
-    if (isGameOver || !myFaces.includes(activeFace)) {
+    if (isGameOver || isInputLocked || !myFaces.includes(activeFace)) {
       return;
     }
     const calculateDelay = (lvl: number) => {
@@ -66,7 +68,7 @@ const GameController = () => {
     }, currentDelay);
  
     return () => clearInterval(gameInterval);
-  }, [isGameOver, myFaces, activeFace, level, moveBlock]);
+  }, [isGameOver, isInputLocked, myFaces, activeFace, level, moveBlock]);
 
   // Lock Delay Timer
   useEffect(() => {
@@ -82,9 +84,11 @@ const GameController = () => {
   // Keyboard controls with DAS
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isInputLocked) return; // Lock all inputs during warning
+
       // Ignore all browser repeat events; we handle it ourselves.
       if (e.repeat) return;
-
+      
       if (isGameOver && e.key !== " ") return;
       if (
         !myFaces.includes(activeFace) &&
