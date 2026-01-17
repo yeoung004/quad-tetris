@@ -7,6 +7,7 @@ import * as THREE from "three";
 import {
   activeFaceAtom,
   currentBlockAtom,
+  gameOverMessageAtom,
   gridsAtom,
   isFocusModeAtom,
   isGameOverAtom,
@@ -28,6 +29,7 @@ const BOARD_HEIGHT = GRID_HEIGHT * BLOCK_SIZE;
 // --- UI Components (non-R3F) ---
 const GameOverOverlay = () => {
   const [showText, setShowText] = useState(true);
+  const gameOverMessage = useAtomValue(gameOverMessageAtom);
 
   useEffect(() => {
     const blinker = setInterval(() => setShowText((prev) => !prev), 700);
@@ -66,7 +68,7 @@ const GameOverOverlay = () => {
 
   return (
     <div style={overlayStyle}>
-      <h1 style={h1Style}>GAME OVER</h1>
+      <h1 style={h1Style}>{gameOverMessage}</h1>
       <p style={pStyle}>PRESS [SPACE] TO RESTART</p>
     </div>
   );

@@ -35,6 +35,7 @@ export const currentBlockAtom = atom<TetrisBlock | null>(null);
 export const nextBlockAtom = atom<TetrisBlock | null>(null);
 export const scoreAtom = atom(0);
 export const isGameOverAtom = atom(false);
+export const gameOverMessageAtom = atom('GAME OVER');
 export const myFacesAtom = atom<number[]>([0, 1, 2, 3]);
 export const showGhostAtom = atom(true);
 export const levelAtom = atom(1);
@@ -84,6 +85,7 @@ export const startGameAtom = atom(null, (_get, set) => {
   set(levelAtom, 1);
   set(linesClearedAtom, 0);
   set(isLockingAtom, false);
+  set(gameOverMessageAtom, 'GAME OVER');
 });
 
 export const moveBlockAtom = atom(
@@ -127,7 +129,9 @@ export const rotateBlockAtom = atom(null, (get, set) => {
 export const changeFaceAtom = atom(
   null,
   (get, set, direction: "left" | "right") => {
-    if (get(isGameOverAtom)) return;
+    const isGameOver = get(isGameOverAtom);
+    const currentBlock = get(currentBlockAtom);
+    if (isGameOver || !currentBlock) return;
 
     const myFaces = get(myFacesAtom);
     const activeFace = get(activeFaceAtom);
@@ -138,8 +142,18 @@ export const changeFaceAtom = atom(
     } else {
       currentIndex = (currentIndex - 1 + myFaces.length) % myFaces.length;
     }
+    const newActiveFace = myFaces[currentIndex];
+    const newGrid = get(gridsAtom)[newActiveFace];
 
-    set(activeFaceAtom, myFaces[currentIndex]);
+    if (!isValidMove(newGrid, currentBlock, currentBlock.position)) {
+      set(isGameOverAtom, true);
+      set(gameOverMessageAtom, 'COLLISION!');
+      // We might want to set the block to null to make the collision more visible
+      set(currentBlockAtom, null); 
+      return; // Stop execution to prevent face change
+    }
+
+    set(activeFaceAtom, newActiveFace);
   }
 );
 
@@ -210,6 +224,7 @@ export const placeBlockAtom = atom(null, (get, set) => {
     )
   ) {
     set(isGameOverAtom, true);
+    set(gameOverMessageAtom, 'GAME OVER');
     set(currentBlockAtom, null);
   }
 });

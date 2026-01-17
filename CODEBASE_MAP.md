@@ -44,15 +44,15 @@
 ### `src/atoms/gameAtoms.ts`
 - **주요 역할**: 게임의 모든 상태와 관련 액션을 원자(atom) 단위로 정의합니다. 상태와 로직이 한 곳에 모여있습니다.
 - **핵심 atom**:
-    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isFocusModeAtom` 등 독립적인 상태 조각들.
+    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isFocusModeAtom`, `isGameOverAtom`, `gameOverMessageAtom` 등 독립적인 상태 조각들.
     - **Derived Atoms**: `currentGridAtom` 같이 다른 atom을 조합하여 만드는 읽기 전용 파생 상태.
-    - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `placeBlockAtom`, `toggleFocusModeAtom` 등 게임 로직을 실행하는 쓰기 전용 atom. `get`과 `set`을 사용하여 원자적으로 다른 atom들을 업데이트합니다.
+    - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `placeBlockAtom`, `changeFaceAtom` 등 게임 로직을 실행하는 쓰기 전용 atom. `get`과 `set`을 사용하여 원자적으로 다른 atom들을 업데이트합니다. 특히 `changeFaceAtom`은 면 전환 시 다음 면의 그리드와 충돌 여부를 확인하여 즉시 게임 오버를 처리하는 '면 전환 사망' 로직을 포함합니다.
 - **의존성**: `jotai`.
 
 ### `src/components/GameController.tsx`
 - **주요 역할**: 게임의 "엔진" 역할을 수행하는 보이지 않는(non-rendering) 컴포넌트입니다. 게임 루프, 키보드 입력, 락 딜레이 등 모든 사이드 이펙트를 처리합니다.
 - **핵심 로직**:
-    - `useSetAtom`으로 `moveBlockAtom`, `placeBlockAtom` 등 액션 atom들의 setter 함수를 가져옵니다.
+    - `useSetAtom`으로 `moveBlockAtom`, `placeBlockAtom`, `changeFaceAtom` 등 액션 atom들의 setter 함수를 가져옵니다.
     - `useEffect` (Game Loop / Keyboard): 상태에 따라 적절한 액션 atom을 실행합니다. 'f' 키 입력을 감지하여 `toggleFocusModeAtom`을 호출, 포커스 모드를 토글합니다.
     - **키보드 입력 (DAS/ARR)**: `keydown` 및 `keyup` 이벤트를 리스닝하여 `setTimeout`과 `setInterval`을 사용한 **DAS (Delayed Auto Shift)** 로직을 구현합니다. 사용자가 좌/우/아래 방향키를 길게 누르면, 짧은 지연(`DAS_DELAY`) 후 `ARR` (Auto Repeat Rate) 간격으로 `moveBlockAtom`이 연속적으로 호출되어 부드러운 블록 이동을 제공합니다. `useRef`를 사용하여 타이머 ID를 관리하고, `e.repeat` 플래그를 이용해 키의 첫 입력만 감지하여 안정적으로 타이머를 시작합니다.
     - `useAtomValue`로 `isGameOver`, `level` 등의 상태를 구독하여 로직에 사용합니다.
@@ -62,10 +62,9 @@
 - **주요 역할**: `three.js`를 사용하여 게임의 3D 렌더링을 담당합니다.
 - **핵심 로직**:
     - `gameState`와 `dispatch` prop이 제거되고, `useAtomValue`를 사용하여 `gridsAtom`, `currentBlockAtom` 등 렌더링에 필요한 상태를 직접 구독합니다.
-    - `isFocusModeAtom`과 `activeFaceAtom`을 구독하여 '포커스 모드'를 구현합니다.
-    - **GameBoardFace**: `GameScene` 내부에 정의된 이 컴포넌트는 `isFocusMode`가 활성화되면 `activeFace`가 아닌 다른 면의 블록들을 희미하게(low opacity) 렌더링하여 사용자의 시선을 집중시킵니다.
-    - **GameBoardBoundary**: 포커스 모드일 때 경계 박스의 불투명도를 높여 뒷면의 시각적 노이즈를 차단합니다.
-    - `NextBlockPreview`, `GameOverOverlay` 등 하위 컴포넌트들도 atom을 직접 구독하거나 필요한 값을 prop으로 전달받습니다. 이로써 컴포넌트들이 완전히 분리되고 재사용성이 높아집니다.
+    - **GameOverOverlay**: `isGameOverAtom`이 `true`가 되면 활성화됩니다. `gameOverMessageAtom`을 구독하여 'GAME OVER' 또는 'COLLISION!'과 같이 게임 오버의 원인에 따른 맞춤 메시지를 표시합니다.
+    - **Focus Mode**: `isFocusModeAtom`과 `activeFaceAtom`을 구독하여 '포커스 모드'를 구현합니다. `GameBoardFace` 컴포넌트는 `isFocusMode`가 활성화되면 `activeFace`가 아닌 다른 면의 블록들을 희미하게(low opacity) 렌더링하여 사용자의 시선을 집중시킵니다.
+    - `NextBlockPreview`, `GameBoardBoundary` 등 다른 하위 컴포넌트들도 atom을 직접 구독하여 재사용성을 높입니다.
 - **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`.
 
 ### `src/engine/grid.ts`
@@ -94,35 +93,36 @@ Jotai 아키텍처는 `useReducer`와 달리 중앙 집중식 스토어가 아�
 
 5.  **독립적인 로직 실행**:
     - `GameController`의 하강 타이머(`setInterval`)는 `moveBlock({ dx: 0, dy: 1 })`을 주기적으로 호출합니다.
-    - 동시에 사용자는 `changeFace('left')`를 호출할 수 있습니다. 이 액션은 `activeFaceAtom`을 변경하며, `useFrame` 훅이 이 변경을 감지하여 카메라를 부드럽게 회전시킵니다.
+    - 동시에 사용자는 `changeFace('left')`를 호출할 수 있습니다. 이 액션은 `activeFaceAtom`을 변경하며, 충돌 발생 시 게임 오버 처리 후 카메라 회전을 중단합니다.
     - 두 로직은 서로 다른 atom을 업데이트하므로 충돌하지 않고 독립적으로 실행될 수 있습니다. `useReducer`에서 발생할 수 있었던 복잡한 상태 병합 및 덮어쓰기 문제가 원천적으로 해결됩니다.
 
 이 구조는 상태와 로직, 뷰를 명확히 분리하고, 각 컴포넌트가 필요한 최소한의 상태만 구독하게 하여 애플리케이션의 성능과 유지보수성을 극대화합니다.
 
 ## 4. 시각적 집중도 최적화 (Focus Mode) 데이터 흐름
 
-'Focus Mode'는 사용자가 현재 활성화된 면에만 집중할 수 있도록 다른 면의 시각적 요소를 최소화하는 기능입니다.
+'Focus Mode'는 사용자가 현재 활성화된 면에만 집중할 수 있도록 다른 면의 시각적 요소를 최소화하는 기능입니다. 이 흐름은 단일 상태(`isFocusModeAtom`)의 변경만으로 여러 3D 컴포넌트의 시각적 표현이 일관되게 변경되어 최적화된 사용자 경험을 제공합니다.
 
 1.  **사용자 입력 (`GameController.tsx`)**: 사용자가 'F' 키를 누릅니다.
-2.  **액션 실행 (`gameAtoms.ts`)**: `GameController`는 `toggleFocusModeAtom` 액션을 호출합니다. 이 액션은 `isFocusModeAtom`의 boolean 상태를 토글합니다.
+2.  **액션 실행 (`gameAtoms.ts`)**: `GameController`는 `toggleFocusModeAtom` 액션을 호출합니다.
 3.  **상태 전파 (`Jotai`)**: `isFocusModeAtom`의 상태 변경이 발생합니다.
-4.  **UI 렌더링 (`GameBoard3D.tsx`)**:
-    - `GameBoard3D` 내부의 `GameScene` 컴포넌트는 `isFocusModeAtom`과 `activeFaceAtom`을 구독하고 있습니다.
-    - `GameScene`은 4개의 `GameBoardFace` 자식 컴포넌트를 렌더링할 때, `isFocusMode`와 `activeFace` 상태를 prop으로 전달합니다.
-    - 각 `GameBoardFace`는 자신이 `activeFace`가 아니고 `isFocusMode`가 `true`이면, 내부의 `TetrisBlock3D` 컴포넌트들의 `opacity`를 매우 낮게 설정하여 렌더링합니다.
-    - `GameBoardBoundary` 컴포넌트 역시 `isFocusModeAtom`을 구독하여, 포커스 모드 시 자신의 `opacity`를 높여 배경의 방해 요소를 줄입니다.
-
-이 흐름을 통해 단일 상태(`isFocusModeAtom`)의 변경만으로 여러 3D 컴포넌트의 시각적 표현이 일관되게 변경되어 최적화된 사용자 경험을 제공합니다.
+4.  **UI 렌더링 (`GameBoard3D.tsx`)**: `GameBoardFace`와 `GameBoardBoundary` 컴포넌트가 `isFocusModeAtom`의 새 값을 기반으로 투명도를 조절하여 리렌더링합니다.
 
 ## 5. UX 개선: DAS를 통한 연속 이동 로직
 
-**DAS (Delayed Auto Shift)** 와 **ARR (Auto Repeat Rate)** 시스템은 현대 테트리스 게임의 표준 조작감을 제공하여 사용자 경험을 크게 향상시킵니다.
+**DAS (Delayed Auto Shift)** 와 **ARR (Auto Repeat Rate)** 시스템은 현대 테트리스 게임의 표준 조작감을 제공하여 사용자 경험을 크게 향상시킵니다. 이 시스템은 `GameController.tsx` 내에서 `setTimeout`과 `setInterval`을 조합하여 구현되었습니다.
 
-- **문제점**: DAS가 없으면, 사용자는 블록을 여러 칸 이동시키기 위해 방향키를 반복적으로 눌러야 합니다. 이는 피로감을 유발하고 정교하고 빠른 조작을 방해합니다.
-- **해결책**:
-    1.  **최초 입력**: 사용자가 키를 누르면 블록이 즉시 한 칸 이동합니다.
-    2.  **지연 (DAS_DELAY)**: 사용자가 키를 계속 누르고 있으면, 160ms의 짧은 지연 후 자동 반복이 시작됩니다. 이 지연 시간 덕분에 사용자는 실수로 너무 많이 이동하는 것을 방지하고 한 칸만 정확히 이동할 수 있습니다.
-    3.  **연속 이동 (ARR)**: 지연 시간이 끝나면, 50ms마다 블록이 한 칸씩 부드럽게 이동합니다. 이를 통해 사용자는 벽에 블록을 빠르고 쉽게 붙일 수 있습니다.
-    4.  **입력 해제**: 사용자가 키에서 손을 떼는 즉시 모든 이동이 멈추므로, 반응성이 뛰어나고 직관적인 조작이 가능합니다.
+- **문제점**: DAS가 없으면, 사용자는 블록을 여러 칸 이동시키기 위해 방향키를 반복적으로 눌러야 합니다.
+- **해결책**: 키를 길게 누르면 짧은 지연 후, 빠른 속도로 블록이 연속 이동하여 정교하고 빠른 조작을 가능하게 합니다.
 
-이 시스템은 `GameController.tsx` 내에서 `setTimeout`과 `setInterval`을 조합하여 구현되었으며, `useEffect`의 클린업 함수를 통해 사용자가 다른 면으로 전환(`changeFace`)하거나 게임이 종료될 때 모든 타이머가 안정적으로 제거되도록 보장합니다.
+## 6. 핵심 게임플레이 메커니즘 (Core Gameplay Mechanics)
+
+### 면 전환 사망 판정 (Face-Switch Death)
+- **정의**: 4면체 테트리스 고유의 게임 오버 조건입니다. 플레이어가 Q 또는 E 키로 보드의 면을 전환할 때, 현재 조작 중인 블록이 이동하려는 새로운 면에 이미 쌓여있는 블록들과 겹치면 즉시 게임이 종료됩니다.
+- **로직 흐름**:
+    1. **사용자 입력**: `GameController`가 Q/E 키 입력을 감지하고 `changeFaceAtom` 액션을 호출합니다.
+    2. **충돌 검사 (`changeFaceAtom`)**: `activeFaceAtom`을 바로 바꾸는 대신, 목표 면의 그리드 데이터(`grids[newFace]`)와 `currentBlock`의 현재 위치를 `isValidMove()` 함수로 넘겨 충돌 여부를 먼저 확인합니다.
+    3. **게임 오버 처리**: `isValidMove()`가 `false`를 반환하면, `isGameOverAtom`을 `true`로, `gameOverMessageAtom`을 "COLLISION!"으로 설정하여 게임을 즉시 종료시킵니다. 면 전환은 일어나지 않습니다.
+    4. **정상 전환**: 충돌이 없으면(`true` 반환), `activeFaceAtom`의 값을 새로운 면으로 업데이트하여 카메라 회전을 시작합니다.
+- **목적**: 이 메커니즘은 플레이어에게 단순히 블록을 쌓는 것뿐만 아니라, 각 4개 면의 공간을 전략적으로 관리해야 하는 새로운 차원의 도전을 제공합니다.
+
+이 문서는 프로젝트가 발전함에 따라 지속적으로 업데이트되어야 합니다.
