@@ -164,8 +164,6 @@ export const rotateBlockAtom = atom(null, (get, set) => {
   if (isValidMove(get(currentGridAtom), rotatedBlock, rotatedBlock.position)) {
     set(currentBlockAtom, rotatedBlock);
     set(isLockingAtom, false);
-  } else {
-    set(triggerCollisionWarningAtom, rotatedBlock);
   }
 });
 
