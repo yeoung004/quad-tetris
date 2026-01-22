@@ -143,16 +143,48 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 15%; /* Take up 15% of the screen width */
-  z-index: 50; /* Above the game canvas, below the HUD */
-  /* background-color: rgba(255, 255, 255, 0.05);  Optional: for debugging touch area */
-  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2); /* Visual feedback on tap */
+  width: calc(15% + env(safe-area-inset-left));
+  max-width: 80px; /* Max width to not be too intrusive */
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  font-family: 'Orbitron', sans-serif;
+  color: rgba(0, 255, 255, 0.7);
+  background: rgba(0, 20, 20, 0.3); /* Translucent background */
+  border-style: solid;
+  border-width: 2px;
+  border-color: rgba(0, 255, 255, 0.5);
+  text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+  box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.3);
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.face-shift-button:active, .face-shift-button:focus {
+  background: rgba(0, 50, 50, 0.5);
+  color: #fff;
+  text-shadow: 0 0 15px #0ff, 0 0 30px #0ff;
+  border-color: #0ff;
+  box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.5), 0 0 15px rgba(0, 255, 255, 0.3);
 }
 
 .face-shift-button.left {
   left: 0;
+  padding-left: env(safe-area-inset-left);
+  border-top-right-radius: 15px;
+  border-bottom-right-radius: 15px;
+  border-left: none;
 }
 
 .face-shift-button.right {
   right: 0;
+  padding-right: env(safe-area-inset-right);
+  width: calc(15% + env(safe-area-inset-right));
+  border-top-left-radius: 15px;
+  border-bottom-left-radius: 15px;
+  border-right: none;
 }
+

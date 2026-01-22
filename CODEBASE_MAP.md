@@ -4,7 +4,7 @@
 
 ## 1. 프로젝트 구조 (Project Structure)
 
-```
+`└── StartScreen.tsx
 /
 ├── .gitignore
 ├── index.html
@@ -22,6 +22,8 @@
     │   ├── DesktopDashboard.tsx
     │   ├── GameBoard3D.tsx
     │   ├── GameController.tsx
+    │   ├── InstructionOverlay.css
+    │   ├── InstructionOverlay.tsx
     │   ├── KeyHints.tsx
     │   ├── MobileControls.tsx
     │   ├── MobileHUD.tsx
@@ -30,13 +32,7 @@
     │   ├── MobileUI.css
     │   ├── NextBlockPreview.tsx
     │   └── StartScreen.tsx
-    ├── engine/
-    │   ├── TetrisBlock.ts
-    │   └── grid.ts
-    └── hooks/
-        ├── useGameActions.ts
-        └── useWindowSize.ts
-```
+`
 
 ## 2. 파일 분석 (File-by-File Analysis)
 
@@ -95,8 +91,17 @@
 - **핵심 로직**:
     - `useWindowSize` 훅을 사용하여 데스크탑 뷰포트에서는 렌더링되지 않습니다.
     - `changeFaceAtom`을 호출하여 큐브 면 변경을 트리거합니다.
-    - **터치/클릭 이벤트에 300ms의 디바운스를 적용하여 한 번의 탭으로 여러 번의 액션이 발생하는 것을 방지합니다.**
+    - **이제 화면 좌우에 반투명 네온 스타일의 세로 막대로 표시되어 사용자가 명확히 인지할 수 있습니다. 각 막대에는 '<', '>' 아이콘이 포함되어 있으며, 탭하면 빛나는 효과가 나타납니다.**
+    - 터치/클릭 이벤트에 300ms의 디바운스를 적용하여 한 번의 탭으로 여러 번의 액션이 발생하는 것을 방지합니다.
 - **의존성**: `react`, `jotai`, `gameAtoms.ts`, `useWindowSize.ts`.
+
+### `src/components/InstructionOverlay.tsx`
+- **주요 역할**: 게임 방법, 조작법, 승리 조건을 설명하는 오버레이 컴포넌트입니다.
+- **핵심 로직**:
+    - `StartScreen`에 있는 '?' 버튼을 통해 활성화됩니다.
+    - `useWindowSize` 훅을 사용하여 모바일과 데스크탑에 각기 다른 레이아웃을 보여줍니다. (모바일: 세로 스크롤, 데스크탑: 고정 대시보드)
+    - 부드러운 fade-in 효과를 위한 CSS 애니메이션을 포함합니다.
+- **의존성**: `react`, `useWindowSize.ts`.
 
 ### `src/components/MobileSettingsHUD.tsx`
 - **주요 역할**: **모바일 전용**으로, 화면 좌측 상단에 설정(톱니바퀴) 아이콘을 표시합니다.
@@ -129,7 +134,10 @@
 
 ### `src/components/StartScreen.tsx`
 - **주요 역할**: 게임 시작 화면을 표시합니다.
-- **핵심 로직**: `startGameAtom`을 호출하여 게임을 시작합니다. 이제 `window`가 아닌 컴포넌트 자체의 클릭/터치 이벤트만 감지하여 다른 UI와의 충돌을 방지합니다.
+- **핵심 로직**: 
+    - `startGameAtom`을 호출하여 게임을 시작합니다.
+    - 이제 `window`가 아닌 컴포넌트 자체의 클릭/터치 이벤트만 감지하여 다른 UI와의 충돌을 방지합니다.
+    - **화면 우측 상단에 '?' 아이콘(도움말 버튼)을 포함합니다. 이 버튼을 클릭하면 `InstructionOverlay`가 나타나 게임 방법을 안내합니다.**
 
 ### `src/engine/grid.ts`
 - **주요 역할**: 그리드 생성, 충돌 검사 등 상태와 무관한 순수 함수들을 포함하는 유틸리티 파일입니다.

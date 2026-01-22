@@ -35,12 +35,16 @@ const MobileControls = () => {
         className="face-shift-button left"
         onTouchStart={(e) => handleFaceChange(e, "left")}
         onClick={(e) => handleFaceChange(e, "left")}
-      />
+      >
+        &lt;
+      </div>
       <div
         className="face-shift-button right"
         onTouchStart={(e) => handleFaceChange(e, "right")}
         onClick={(e) => handleFaceChange(e, "right")}
-      />
+      >
+        &gt;
+      </div>
     </>
   );
 };
