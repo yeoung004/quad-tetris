@@ -1,27 +1,24 @@
 import { Box, Edges } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette, Noise } from "@react-three/postprocessing";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   activeFaceAtom,
   collisionBlockAtom,
   currentBlockAtom,
-  dropBlockAtom,
   gameOverMessageAtom,
   gridsAtom,
   isFocusModeAtom,
   isGameOverAtom,
   isWarningAtom,
   levelAtom,
-  moveBlockAtom,
-  nextBlockAtom,
-  rotateBlockAtom,
   showGhostAtom,
 } from "../atoms/gameAtoms";
 import { GRID_HEIGHT, GRID_WIDTH, isValidMove } from "../engine/grid";
 import { TetrisBlock, TETROMINOS } from "../engine/TetrisBlock";
+import { useGameActions } from "../hooks/useGameActions";
 
 const BLOCK_SIZE = 1;
 const BOARD_WIDTH = GRID_WIDTH * BLOCK_SIZE;
@@ -95,73 +92,6 @@ const GameOverOverlay = () => {
         <p style={pStyle}>PRESS [SPACE] TO RESTART</p>
       </div>
     </>
-  );
-};
-
-const NextBlockPreview = () => {
-  const nextBlock = useAtomValue(nextBlockAtom);
-  if (!nextBlock) return null;
-
-  const previewStyle: React.CSSProperties = {
-    position: "absolute",
-    top: "20px",
-    right: "20px",
-    width: "150px",
-    height: "150px",
-    background: "rgba(0,0,0,0.25)",
-    border: "1px solid #00ffff",
-    borderRadius: "10px",
-    zIndex: 100,
-    overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-    fontFamily: "'Cutive Mono', 'Courier New', monospace",
-    color: "#00ffff",
-    textShadow: "0 0 5px #00ffff",
-  };
-
-  const shape = nextBlock.shape;
-  const shapeWidth = shape[0].length;
-  const shapeHeight = shape.length;
-  const offsetX = (4 - shapeWidth) / 2;
-  const offsetY = (4 - shapeHeight) / 2;
-
-  return (
-    <div style={previewStyle}>
-      <div style={{ textAlign: "center", padding: "5px", flexShrink: 0 }}>
-        NEXT
-      </div>
-      <div style={{ flexGrow: 1, position: "relative" }}>
-        <Canvas camera={{ fov: 30, position: [0, 0, 10] }}>
-          <ambientLight intensity={0.8} />
-          <pointLight position={[10, 10, 10]} intensity={0.5} />
-          <group scale={[0.9, 0.9, 0.9]}>
-            {shape.map((row: (string | number)[], y: number) =>
-              row.map((cell: string | number, x: number) => {
-                if (cell !== 0) {
-                  return (
-                    <Box
-                      key={`${y}-${x}`}
-                      args={[1, 1, 1]}
-                      position={[x + offsetX - 1.5, -(y + offsetY) + 1.5, 0]}
-                    >
-                      <meshStandardMaterial
-                        color={nextBlock.color}
-                        emissive={nextBlock.color}
-                        emissiveIntensity={0.4}
-                        toneMapped={false}
-                      />
-                      <Edges color={nextBlock.color} />
-                    </Box>
-                  );
-                }
-                return null;
-              })
-            )}
-          </group>
-        </Canvas>
-      </div>
-    </div>
   );
 };
 
@@ -489,56 +419,7 @@ const LevelUpOverlay = () => {
 const GameBoard3D: React.FC = () => {
   const isGameOver = useAtomValue(isGameOverAtom);
   const level = useAtomValue(levelAtom);
-  const moveBlock = useSetAtom(moveBlockAtom);
-  const rotateBlock = useSetAtom(rotateBlockAtom);
-  const dropBlock = useSetAtom(dropBlockAtom);
-
-
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number; time: number } | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length > 1) return;
-    setTouchStart({
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-      time: Date.now(),
-    });
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStart || e.changedTouches.length > 1) return;
-
-    const touchEnd = {
-      x: e.changedTouches[0].clientX,
-      y: e.changedTouches[0].clientY,
-      time: Date.now(),
-    };
-
-    const deltaX = touchEnd.x - touchStart.x;
-    const deltaY = touchEnd.y - touchStart.y;
-    const deltaTime = touchEnd.time - touchStart.time;
-
-    // TAP LOGIC
-    if (deltaTime < 250 && Math.abs(deltaX) < 20 && Math.abs(deltaY) < 20) {
-      rotateBlock();
-      return;
-    }
-    
-    // SWIPE LOGIC
-    const swipeThreshold = 50;
-    if (Math.abs(deltaX) > Math.abs(deltaY)) { // Horizontal swipe
-      if (deltaX > swipeThreshold) {
-        moveBlock({ dx: 1, dy: 0 }); // Right
-      } else if (deltaX < -swipeThreshold) {
-        moveBlock({ dx: -1, dy: 0 }); // Left
-      }
-    } else { // Vertical swipe
-      if (deltaY > swipeThreshold) {
-        dropBlock(); // Down
-      }
-    }
-    setTouchStart(null);
-  };
+  const { handleTouchStart, handleTouchEnd } = useGameActions();
 
 
   const [levelUpFlash, setLevelUpFlash] = useState(false);
@@ -563,7 +444,6 @@ const GameBoard3D: React.FC = () => {
     >
       {isGameOver && <GameOverOverlay />}
       {levelUpFlash && <LevelUpOverlay />}
-      <NextBlockPreview />
       <Canvas
         style={{ height: "100%", width: "100%", background: "#050505" }}
         camera={{ fov: 60, position: [0, 0, 24] }}

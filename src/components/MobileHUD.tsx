@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import React from "react";
 import useWindowSize from "../hooks/useWindowSize";
 import {
@@ -16,14 +16,20 @@ import NextBlockPreview from "./NextBlockPreview";
 const MobileHUD: React.FC = () => {
   const { width } = useWindowSize();
   const isGameStarted = useAtomValue(isGameStartedAtom);
-  const [isHudOpen, setIsHudOpen] = useAtom(isHudOpenAtom);
+  const isHudOpen = useAtomValue(isHudOpenAtom);
+  const setIsHudOpen = useSetAtom(isHudOpenAtom);
   const score = useAtomValue(scoreAtom);
   const level = useAtomValue(levelAtom);
   const activeFace = useAtomValue(activeFaceAtom);
 
-  const toggleHud = (e: React.TouchEvent | React.MouseEvent) => {
+  const showHud = (e: React.TouchEvent | React.MouseEvent) => {
     e.preventDefault();
-    setIsHudOpen(!isHudOpen);
+    setIsHudOpen(true);
+  };
+
+  const hideHud = (e: React.TouchEvent | React.MouseEvent) => {
+    e.preventDefault();
+    setIsHudOpen(false);
   };
 
   const isDesktop = width >= 1024;
@@ -36,10 +42,12 @@ const MobileHUD: React.FC = () => {
     <div className="mobile-hud">
       <button
         className="hud-toggle-button"
-        onTouchStart={toggleHud}
-        onClick={toggleHud}
+        onTouchStart={showHud}
+        onTouchEnd={hideHud}
+        onMouseDown={showHud}
+        onMouseUp={hideHud}
       >
-        {isHudOpen ? "X" : "i"}
+        i
       </button>
       {isHudOpen && (
         <div className="hud-content">

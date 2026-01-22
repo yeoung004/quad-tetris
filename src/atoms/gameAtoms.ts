@@ -49,6 +49,7 @@ export const collisionBlockAtom = atom<TetrisBlock | null>(null);
 export const isGameStartedAtom = atom(false);
 export const isInfoOpenAtom = atom(false);
 export const isHudOpenAtom = atom(false);
+export const isFastDroppingAtom = atom(false);
 
 // --- Derived Read-only Atoms ---
 

@@ -15,6 +15,7 @@ import {
   placeBlockAtom,
   toggleGhostAtom,
   toggleFocusModeAtom,
+  isFastDroppingAtom,
 } from "../atoms/gameAtoms";
 
 // DAS (Delayed Auto Shift) and ARR (Auto Repeat Rate) parameters
@@ -37,38 +38,42 @@ const GameController = () => {
   const isInputLocked = useAtomValue(isInputLockedAtom);
   const myFaces = useAtomValue(myFacesAtom);
   const activeFace = useAtomValue(activeFaceAtom);
-  const level = useAtomValue(levelAtom);
-  const isLocking = useAtomValue(isLockingAtom);
-
-  // Refs to hold timer IDs for DAS and ARR
-  const moveTimers = useRef<{
-    [key: string]: { das?: number; arr?: number };
-  }>({});
-
-  // Start the game on mount
-  useEffect(() => {
-    startGame();
-  }, [startGame]);
-
-  useEffect(() => {
-    if (isGameOver || isInputLocked || !myFaces.includes(activeFace)) {
-      return;
-    }
-    const calculateDelay = (lvl: number) => {
-      const startSpeed = 500;
-      const step = 70;
-      const minDelay = 60;
-      return Math.max(minDelay, startSpeed - (lvl - 1) * step);
-    };
-
-    const currentDelay = calculateDelay(level);
-
-    const gameInterval = setInterval(() => {
-      moveBlock({ dx: 0, dy: 1 });
-    }, currentDelay);
- 
-    return () => clearInterval(gameInterval);
-  }, [isGameOver, isInputLocked, myFaces, activeFace, level, moveBlock]);
+    const level = useAtomValue(levelAtom);
+    const isLocking = useAtomValue(isLockingAtom);
+    const isFastDropping = useAtomValue(isFastDroppingAtom);
+  
+    // Refs to hold timer IDs for DAS and ARR
+    const moveTimers = useRef<{
+      [key: string]: { das?: number; arr?: number };
+    }>({});
+  
+    // Start the game on mount
+    useEffect(() => {
+      startGame();
+    }, [startGame]);
+  
+    useEffect(() => {
+      if (isGameOver || isInputLocked || !myFaces.includes(activeFace)) {
+        return;
+      }
+      const calculateDelay = (lvl: number) => {
+        const startSpeed = 500;
+        const step = 70;
+        const minDelay = 60;
+        return Math.max(minDelay, startSpeed - (lvl - 1) * step);
+      };
+  
+      let currentDelay = calculateDelay(level);
+      if (isFastDropping) {
+        currentDelay = 50; // Fast drop speed
+      }
+  
+      const gameInterval = setInterval(() => {
+        moveBlock({ dx: 0, dy: 1 });
+      }, currentDelay);
+   
+      return () => clearInterval(gameInterval);
+    }, [isGameOver, isInputLocked, myFaces, activeFace, level, moveBlock, isFastDropping]);
 
   // Lock Delay Timer
   useEffect(() => {

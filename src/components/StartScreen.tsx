@@ -13,6 +13,19 @@ const StartScreen = () => {
   };
 
   useEffect(() => {
+    // Basic check for touch capabilities
+    const onTouch = () => {
+      setIsTouchDevice(true);
+      window.removeEventListener('touchstart', onTouch);
+    };
+    window.addEventListener('touchstart', onTouch);
+
+    return () => {
+      window.removeEventListener('touchstart', onTouch);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         e.preventDefault();

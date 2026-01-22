@@ -32,6 +32,7 @@
     │   ├── TetrisBlock.ts
     │   └── grid.ts
     └── hooks/
+        ├── useGameActions.ts
         └── useWindowSize.ts
 ```
 
@@ -51,7 +52,7 @@
 ### `src/atoms/gameAtoms.ts`
 - **주요 역할**: 게임의 모든 상태와 관련 액션을 원자(atom) 단위로 정의합니다. 상태와 로직이 한 곳에 모여있습니다.
 - **핵심 atom**:
-    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isGameStartedAtom`, `isHudOpenAtom` 등.
+    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isGameStartedAtom`, `isHudOpenAtom`, `isFastDroppingAtom` 등.
     - **Derived Atoms**: `currentGridAtom` 같이 다른 atom을 조합하여 만드는 읽기 전용 파생 상태.
     - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `rotateBlockAtom`, `changeFaceAtom` 등.
 - **의존성**: `jotai`.
@@ -61,30 +62,44 @@
 - **핵심 로직**: `resize` 이벤트 리스너를 사용하여 창 크기를 상태로 관리합니다.
 - **사용처**: `DesktopDashboard`, `MobileHUD`, `MobileControls`에서 화면 크기에 따라 UI를 조건부로 렌더링하는 데 사용됩니다.
 
+### `src/hooks/useGameActions.ts`
+- **주요 역할**: 모바일 터치 입력을 처리하는 커스텀 훅입니다. 탭, 롱 프레스, 스와이프 제스처를 구분하여 게임 액션을 트리거합니다.
+- **핵심 로직**:
+    - `onTouchStart`와 `onTouchEnd` 이벤트를 사용하여 사용자 입력을 감지합니다.
+    - 짧은 탭은 블록 회전(`rotateBlock`)을 실행합니다.
+    - 200ms 이상 길게 누르면 "Fast Drop" 모드(`isFastDroppingAtom`)를 활성화합니다.
+    - 스와이프는 블록을 좌우로 이동(`moveBlock`)하거나 아래로 드롭(`dropBlock`)시킵니다.
+    - 롱 프레스나 스와이프 중에는 회전이 방지됩니다.
+- **사용처**: `GameBoard3D.tsx`.
+
 ### `src/components/GameController.tsx`
 - **주요 역할**: 게임의 "엔진" 역할을 수행하는 보이지 않는(non-rendering) 컴포넌트입니다. 게임 루프, 키보드 입력, 락 딜레이 등 모든 사이드 이펙트를 처리합니다.
 - **핵심 로직**:
     - `useSetAtom`으로 `moveBlockAtom`, `changeFaceAtom` 등 액션 atom들의 setter 함수를 가져옵니다.
     - `useEffect`를 사용하여 키보드 입력을 감지하고 게임 루프를 실행합니다.
+    - **`isFastDroppingAtom` 상태를 구독하여 `true`일 경우 게임 루프의 속도를 높여 블록을 빠르게 내립니다.**
 - **의존성**: `react`, `jotai`, `gameAtoms.ts`.
 
 ### `src/components/GameBoard3D.tsx`
-- **주요 역할**: `three.js`를 사용하여 게임의 3D 렌더링을 담당합니다.
-- **핵심 로직**: `@react-three/fiber`의 `Canvas`를 설정하고, 3D 씬을 구성합니다.
-- **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`.
+- **주요 역할**: `three.js`를 사용하여 게임의 3D 렌더링을 담당하고, 모바일 입력을 처리합니다.
+- **핵심 로직**:
+    - `@react-three/fiber`의 `Canvas`를 설정하고, 3D 씬을 구성합니다.
+    - **`useGameActions` 훅을 사용하여 터치 이벤트를 처리하고, 해당 핸들러(`handleTouchStart`, `handleTouchEnd`)를 최상위 `div`에 바인딩합니다.**
+- **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`, `useGameActions.ts`.
 
 ### `src/components/MobileControls.tsx`
 - **주요 역할**: 모바일 전용의 화면 좌우 터치 영역을 제공하여 큐브의 면(face)을 회전시킵니다.
 - **핵심 로직**:
     - `useWindowSize` 훅을 사용하여 데스크탑 뷰포트에서는 렌더링되지 않습니다.
     - `changeFaceAtom`을 호출하여 큐브 면 변경을 트리거합니다.
+    - **터치/클릭 이벤트에 300ms의 디바운스를 적용하여 한 번의 탭으로 여러 번의 액션이 발생하는 것을 방지합니다.**
 - **의존성**: `react`, `jotai`, `gameAtoms.ts`, `useWindowSize.ts`.
 
 ### `src/components/MobileHUD.tsx`
-- **주요 역할**: **모바일 전용**으로, 게임 정보(점수, 레벨 등)를 표시하는 접이식 HUD입니다.
+- **주요 역할**: **모바일 전용**으로, 게임 정보(점수, 레벨 등)를 표시하는 HUD입니다.
 - **핵심 로직**:
     - `useWindowSize` 훅을 사용하여 데스크탑 뷰포트에서는 렌더링되지 않습니다.
-    - `isHudOpenAtom` 상태에 따라 UI를 열고 닫는 토글 버튼을 제공합니다.
+    - **'i' 버튼을 누르고 있는 동안에만(`press-and-hold`) `NextBlockPreview`를 포함한 추가 정보를 표시합니다.**
     - `isGameStarted`가 `false`이면 렌더링되지 않아 `StartScreen`과의 상호작용 충돌을 방지합니다.
 - **의존성**: `react`, `jotai`, `gameAtoms.ts`, `NextBlockPreview.tsx`, `useWindowSize.ts`.
 
@@ -111,17 +126,19 @@
 
 Jotai 아키텍처는 분산된 atom들의 네트워크를 통해 상태를 관리합니다. UI는 반응형으로 설계되었습니다.
 
-1.  **상태 정의 (`gameAtoms.ts`)**: 게임의 모든 상태(`grids`, `score` 등)가 독립적인 `atom`으로 존재합니다.
+1.  **상태 정의 (`gameAtoms.ts`)**: 게임의 모든 상태(`grids`, `score`, `isFastDroppingAtom` 등)가 독립적인 `atom`으로 존재합니다.
 
 2.  **UI 렌더링 (Responsive)**:
     - `useWindowSize` 훅이 화면 크기를 감지합니다.
     - 데스크탑 크기(`>=1024px`)에서는 `DesktopDashboard`가 렌더링되어 영구적인 정보 패널을 보여줍니다. `MobileHUD`와 `MobileControls`는 숨겨집니다.
-    - 모바일 크기(`<1024px`)에서는 `MobileHUD`(접이식)와 `MobileControls`(좌우 터치 영역)가 렌더링됩니다. `DesktopDashboard`는 숨겨집니다.
+    - 모바일 크기(`<1024px`)에서는 `MobileHUD`('i' 버튼을 누르는 동안 정보 표시)와 `MobileControls`(좌우 터치 영역)가 렌더링됩니다. `DesktopDashboard`는 숨겨집니다.
 
-3.  **액션 실행 (`GameController`, `MobileControls` 등)**:
-    - 사용자가 키보드를 누르거나(`GameController`) 화면을 터치하면(`MobileControls`) `moveBlockAtom`, `changeFaceAtom` 등의 쓰기 가능한 atom이 호출됩니다.
-    - 이 atom들은 내부 로직에 따라 `currentBlockAtom`, `activeFaceAtom` 등 다른 상태 atom들을 원자적으로 업데이트합니다.
+3.  **액션 실행 (`GameController`, `useGameActions` 등)**:
+    - **키보드 입력 (`GameController`)**: `keydown` 이벤트에 따라 `moveBlockAtom`, `rotateBlockAtom` 등의 atom을 직접 호출합니다.
+    - **터치 입력 (`GameBoard3D` -> `useGameActions`)**: `GameBoard3D`의 터치 이벤트는 `useGameActions` 훅으로 위임됩니다. 이 훅은 제스처(탭, 롱 프레스, 스와이프)를 분석하여 `moveBlockAtom`, `rotateBlockAtom`, `isFastDroppingAtom` 등의 상태를 업데이트합니다.
+    - `MobileControls`는 `changeFaceAtom`을 호출하여 뷰를 회전시킵니다.
 
 4.  **상태 전파 및 리렌더링**:
     - `scoreAtom`의 상태가 변경되면, 이 atom을 구독하는 `DesktopDashboard` 또는 `MobileHUD` 컴포넌트의 점수 표시 부분만 리렌더링됩니다.
+    - `isFastDroppingAtom`이 `true`가 되면 `GameController`의 게임 루프가 더 빠른 속도로 재시작됩니다.
     - 상태 변경이 발생한 atom을 구독하는 컴포넌트만 정확히 리렌더링되므로, 불필요한 렌더링이 최소화됩니다.
