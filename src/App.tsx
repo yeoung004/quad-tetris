@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import React from "react";
+import React, { useEffect } from "react";
 import { isGameStartedAtom, isGameOverAtom, startGameAtom } from "./atoms/gameAtoms";
 import GameBoard3D from "./components/GameBoard3D";
 import GameController from "./components/GameController";
@@ -11,7 +11,7 @@ import DesktopDashboard from "./components/DesktopDashboard";
 import GameOverUI from "./components/GameOverUI"; // Import GameOverUI
 import "./components/MobileUI.css";
 import "./components/DesktopDashboard.css";
-
+import { trackEvent } from './utils/analytics'; // Import trackEvent
 
 const App: React.FC = () => {
   const isGameStarted = useAtomValue(isGameStartedAtom);
@@ -20,7 +20,14 @@ const App: React.FC = () => {
 
   const handleRestart = () => {
     startGame();
+    trackEvent('game_start'); // Track game_start on restart
   };
+
+  useEffect(() => {
+    if (isGameStarted && !isGameOver) {
+      trackEvent('game_start'); // Track initial game_start
+    }
+  }, [isGameStarted, isGameOver]);
 
   return (
     <div style={{ background: "#222", width: '100vw', height: '100dvh', overflow: 'hidden' }}>

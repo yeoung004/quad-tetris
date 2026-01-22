@@ -7,6 +7,7 @@ import {
   isValidMove,
 } from "../engine/grid";
 import { GameState } from "../types";
+import { trackEvent } from '../utils/analytics';
 
 // --- Helper Functions ---
 
@@ -95,6 +96,7 @@ export const triggerCollisionWarningAtom = atom(
       set(isWarningAtom, false);
       set(isInputLockedAtom, false);
       set(currentBlockAtom, null);
+      trackEvent('game_over', { score: get(scoreAtom), level: get(levelAtom) }); // Track game over
     }, 800);
   }
 );
@@ -146,6 +148,7 @@ export const moveBlockAtom = atom(
       set(gameOverMessageAtom, "GAME OVER");
       // We might want to set the block to null to make the collision more visible
       set(currentBlockAtom, null);
+      trackEvent('game_over', { score: get(scoreAtom), level: get(levelAtom) }); // Track game over
       return; // Stop execution to prevent face change
     }
 
@@ -191,6 +194,7 @@ export const changeFaceAtom = atom(
     const newActiveFace = myFaces[currentIndex];
 
     set(activeFaceAtom, newActiveFace);
+    trackEvent('face_change', { face_index: newActiveFace });
   }
 );
 
@@ -287,11 +291,16 @@ export const dropBlockAtom = atom(null, (get, set) => {
 });
 
 export const toggleGhostAtom = atom(null, (get, set) => {
-  set(showGhostAtom, !get(showGhostAtom));
+  const newState = !get(showGhostAtom);
+  set(showGhostAtom, newState);
+  trackEvent('setting_toggle', { setting_name: 'ghost_mode', enabled: newState });
 });
 
 export const toggleFocusModeAtom = atom(null, (_get, set) => {
-  set(isFocusModeAtom, (prev) => !prev);
+  set(isFocusModeAtom, (prev) => {
+    trackEvent('setting_toggle', { setting_name: 'focus_mode', enabled: !prev });
+    return !prev;
+  });
 });
 
 export const setFaceAssignmentsAtom = atom(

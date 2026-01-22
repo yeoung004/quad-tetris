@@ -45,8 +45,18 @@
 - **주요 역할**: 프로젝트 의존성을 정의합니다. `jotai`가 상태 관리를 위해 추가되었습니다.
 - **핵심 라이브러리**: `react`, `jotai`, `three`, `@react-three/fiber`.
 
+### `src/utils/analytics.ts` (New: Google Analytics 4 Utility)
+- **주요 역할**: Google Analytics 4 (GA4) 이벤트를 추적하기 위한 유틸리티 함수들을 포함합니다.
+- **핵심 로직**:
+    - `initializeGA()`: `VITE_GA_MEASUREMENT_ID` 환경 변수를 사용하여 GA4를 초기화합니다. 프로덕션 환경에서만 초기화되도록 설정되어 있습니다.
+    - `trackPageView(path)`: 특정 경로에 대한 페이지 뷰를 GA4로 전송합니다.
+    - `trackEvent(name, params)`: 사용자 정의 이벤트를 GA4로 전송합니다.
+- **의존성**: `react-ga4`.
+- **환경 변수**: `VITE_GA_MEASUREMENT_ID` (GA4 측정 ID).
+
 ### `src/main.tsx`
 - **주요 역할**: React 애플리케이션의 진입점.
+- **핵심 변경 사항**: `initializeGA()` 함수를 호출하여 애플리케이션 로드 시 GA4를 초기화합니다.
 
 ### `index.html` (Updated: Absolute Touch Suppression)
 - **주요 역할**: 애플리케이션의 HTML 골격 및 전역 설정.
