@@ -138,3 +138,21 @@
         right: 10px;
     }
 }
+
+.face-shift-button {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 15%; /* Take up 15% of the screen width */
+  z-index: 50; /* Above the game canvas, below the HUD */
+  /* background-color: rgba(255, 255, 255, 0.05);  Optional: for debugging touch area */
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2); /* Visual feedback on tap */
+}
+
+.face-shift-button.left {
+  left: 0;
+}
+
+.face-shift-button.right {
+  right: 0;
+}

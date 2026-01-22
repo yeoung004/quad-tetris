@@ -18,17 +18,21 @@
     ├── atoms/
     │   └── gameAtoms.ts
     ├── components/
+    │   ├── DesktopDashboard.css
+    │   ├── DesktopDashboard.tsx
     │   ├── GameBoard3D.tsx
     │   ├── GameController.tsx
-    │   ├── InfoToggle.tsx
     │   ├── KeyHints.tsx
+    │   ├── MobileControls.tsx
     │   ├── MobileHUD.tsx
-    │   ├── StartScreen.tsx
-    │   └── MobileUI.css
+    │   ├── MobileUI.css
+    │   ├── NextBlockPreview.tsx
+    │   └── StartScreen.tsx
     ├── engine/
     │   ├── TetrisBlock.ts
     │   └── grid.ts
     └── hooks/
+        └── useWindowSize.ts
 ```
 
 ## 2. 파일 분석 (File-by-File Analysis)
@@ -40,18 +44,27 @@
 ### `src/main.tsx`
 - **주요 역할**: React 애플리케이션의 진입점.
 
+### `src/App.tsx`
+- **주요 역할**: 애플리케이션의 최상위 컴포넌트. `isGameStarted` 상태에 따라 `StartScreen` 또는 주요 게임 컴포넌트들(`GameBoard3D`, `MobileHUD`, `DesktopDashboard` 등)을 렌더링합니다.
+- **핵심 로직**: 모바일과 데스크탑 UI 컴포넌트를 모두 포함하여 반응형 레이아웃의 기반을 마련합니다.
+
 ### `src/atoms/gameAtoms.ts`
 - **주요 역할**: 게임의 모든 상태와 관련 액션을 원자(atom) 단위로 정의합니다. 상태와 로직이 한 곳에 모여있습니다.
 - **핵심 atom**:
-    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isGameStartedAtom`, `isHudOpenAtom` (신규) 등.
+    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isGameStartedAtom`, `isHudOpenAtom` 등.
     - **Derived Atoms**: `currentGridAtom` 같이 다른 atom을 조합하여 만드는 읽기 전용 파생 상태.
-    - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `rotateBlockAtom` 등.
+    - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `rotateBlockAtom`, `changeFaceAtom` 등.
 - **의존성**: `jotai`.
+
+### `src/hooks/useWindowSize.ts`
+- **주요 역할**: 브라우저 창의 크기가 변경될 때마다 현재 너비와 높이를 반환하는 커스텀 훅입니다.
+- **핵심 로직**: `resize` 이벤트 리스너를 사용하여 창 크기를 상태로 관리합니다.
+- **사용처**: `DesktopDashboard`, `MobileHUD`, `MobileControls`에서 화면 크기에 따라 UI를 조건부로 렌더링하는 데 사용됩니다.
 
 ### `src/components/GameController.tsx`
 - **주요 역할**: 게임의 "엔진" 역할을 수행하는 보이지 않는(non-rendering) 컴포넌트입니다. 게임 루프, 키보드 입력, 락 딜레이 등 모든 사이드 이펙트를 처리합니다.
 - **핵심 로직**:
-    - `useSetAtom`으로 `moveBlockAtom`, `placeBlockAtom` 등 액션 atom들의 setter 함수를 가져옵니다.
+    - `useSetAtom`으로 `moveBlockAtom`, `changeFaceAtom` 등 액션 atom들의 setter 함수를 가져옵니다.
     - `useEffect`를 사용하여 키보드 입력을 감지하고 게임 루프를 실행합니다.
 - **의존성**: `react`, `jotai`, `gameAtoms.ts`.
 
@@ -60,30 +73,55 @@
 - **핵심 로직**: `@react-three/fiber`의 `Canvas`를 설정하고, 3D 씬을 구성합니다.
 - **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`.
 
-### `src/components/MobileHUD.tsx` (신규)
-- **주요 역할**: 모바일과 데스크탑에서 게임 정보(점수, 레벨, 다음 블록)와 조작법(`KeyHints`)을 표시하는 접이식 Heads-Up Display(HUD)입니다.
+### `src/components/MobileControls.tsx`
+- **주요 역할**: 모바일 전용의 화면 좌우 터치 영역을 제공하여 큐브의 면(face)을 회전시킵니다.
 - **핵심 로직**:
+    - `useWindowSize` 훅을 사용하여 데스크탑 뷰포트에서는 렌더링되지 않습니다.
+    - `changeFaceAtom`을 호출하여 큐브 면 변경을 트리거합니다.
+- **의존성**: `react`, `jotai`, `gameAtoms.ts`, `useWindowSize.ts`.
+
+### `src/components/MobileHUD.tsx`
+- **주요 역할**: **모바일 전용**으로, 게임 정보(점수, 레벨 등)를 표시하는 접이식 HUD입니다.
+- **핵심 로직**:
+    - `useWindowSize` 훅을 사용하여 데스크탑 뷰포트에서는 렌더링되지 않습니다.
     - `isHudOpenAtom` 상태에 따라 UI를 열고 닫는 토글 버튼을 제공합니다.
-    - `scoreAtom`, `nextBlockAtom` 등의 상태를 구독하여 실시간 정보를 표시합니다.
-    - 모바일 화면에서는 `KeyHints`를 자동으로 숨깁니다.
-- **의존성**: `react`, `jotai`, `gameAtoms.ts`, `KeyHints.tsx`.
+    - `isGameStarted`가 `false`이면 렌더링되지 않아 `StartScreen`과의 상호작용 충돌을 방지합니다.
+- **의존성**: `react`, `jotai`, `gameAtoms.ts`, `NextBlockPreview.tsx`, `useWindowSize.ts`.
+
+### `src/components/DesktopDashboard.tsx`
+- **주요 역할**: **데스크탑 전용**으로, 게임 정보, 다음 블록, 조작법을 항상 표시하는 영구적인 대시보드입니다.
+- **핵심 로직**:
+    - `useWindowSize` 훅을 사용하여 모바일 뷰포트에서는 렌더링되지 않습니다.
+    - 화면 좌우에 패널을 배치하여 게임 정보를 표시합니다.
+- **의존성**: `react`, `jotai`, `gameAtoms.ts`, `NextBlockPreview.tsx`, `KeyHints.tsx`, `useWindowSize.ts`.
+
+### `src/components/NextBlockPreview.tsx`
+- **주요 역할**: 다음 테트리스 블록을 3D로 렌더링하는 재사용 가능한 컴포넌트입니다.
+- **사용처**: `MobileHUD`와 `DesktopDashboard`에서 모두 사용됩니다.
+- **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`.
+
+### `src/components/StartScreen.tsx`
+- **주요 역할**: 게임 시작 화면을 표시합니다.
+- **핵심 로직**: `startGameAtom`을 호출하여 게임을 시작합니다. 이제 `window`가 아닌 컴포넌트 자체의 클릭/터치 이벤트만 감지하여 다른 UI와의 충돌을 방지합니다.
 
 ### `src/engine/grid.ts`
 - **주요 역할**: 그리드 생성, 충돌 검사 등 상태와 무관한 순수 함수들을 포함하는 유틸리티 파일입니다.
-- **핵심 함수**: `createEmptyGrid()`, `isValidMove()`.
-- **의존성**: `TetrisBlock.ts`.
 
 ## 3. 핵심 로직 흐름 (Data Flow with Jotai)
 
-Jotai 아키텍처는 분산된 atom들의 네트워크를 통해 상태를 관리합니다.
+Jotai 아키텍처는 분산된 atom들의 네트워크를 통해 상태를 관리합니다. UI는 반응형으로 설계되었습니다.
 
 1.  **상태 정의 (`gameAtoms.ts`)**: 게임의 모든 상태(`grids`, `score` 등)가 독립적인 `atom`으로 존재합니다.
 
-3.  **액션 실행 (`gameAtoms.ts`)**:
-    - `moveBlockAtom`과 같은 쓰기 가능한 atom이 호출되면, 내부 로직에 따라 관련 상태 atom들을 원자적으로 업데이트합니다.
-    - `isValidMove` 같은 순수 함수를 사용하여 다음 상태를 계산합니다.
+2.  **UI 렌더링 (Responsive)**:
+    - `useWindowSize` 훅이 화면 크기를 감지합니다.
+    - 데스크탑 크기(`>=1024px`)에서는 `DesktopDashboard`가 렌더링되어 영구적인 정보 패널을 보여줍니다. `MobileHUD`와 `MobileControls`는 숨겨집니다.
+    - 모바일 크기(`<1024px`)에서는 `MobileHUD`(접이식)와 `MobileControls`(좌우 터치 영역)가 렌더링됩니다. `DesktopDashboard`는 숨겨집니다.
+
+3.  **액션 실행 (`GameController`, `MobileControls` 등)**:
+    - 사용자가 키보드를 누르거나(`GameController`) 화면을 터치하면(`MobileControls`) `moveBlockAtom`, `changeFaceAtom` 등의 쓰기 가능한 atom이 호출됩니다.
+    - 이 atom들은 내부 로직에 따라 `currentBlockAtom`, `activeFaceAtom` 등 다른 상태 atom들을 원자적으로 업데이트합니다.
 
 4.  **상태 전파 및 리렌더링**:
-    - `scoreAtom`의 상태가 변경되면, 이 atom을 구독하는 `MobileHUD` 컴포넌트의 점수 표시 부분만 리렌더링됩니다.
-    - `currentBlockAtom`이 변경되면 `GameBoard3D`가 리렌더링되어 블록의 움직임을 화면에 표시합니다.
-    - **최적화**: 상태 변경이 발생한 atom을 구독하는 컴포넌트만 정확히 리렌더링되므로, 불필요한 렌더링이 최소화됩니다.
+    - `scoreAtom`의 상태가 변경되면, 이 atom을 구독하는 `DesktopDashboard` 또는 `MobileHUD` 컴포넌트의 점수 표시 부분만 리렌더링됩니다.
+    - 상태 변경이 발생한 atom을 구독하는 컴포넌트만 정확히 리렌더링되므로, 불필요한 렌더링이 최소화됩니다.

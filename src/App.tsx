@@ -3,9 +3,13 @@ import React from "react";
 import { isGameStartedAtom } from "./atoms/gameAtoms";
 import GameBoard3D from "./components/GameBoard3D";
 import GameController from "./components/GameController";
+import MobileControls from "./components/MobileControls";
 import MobileHUD from "./components/MobileHUD";
 import StartScreen from "./components/StartScreen";
+import DesktopDashboard from "./components/DesktopDashboard";
 import "./components/MobileUI.css";
+import "./components/DesktopDashboard.css";
+
 
 const App: React.FC = () => {
   const isGameStarted = useAtomValue(isGameStartedAtom);
@@ -20,6 +24,8 @@ const App: React.FC = () => {
           <GameController />
 
           <MobileHUD />
+          <MobileControls />
+          <DesktopDashboard />
           <GameBoard3D />
         </>
       )}

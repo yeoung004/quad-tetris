@@ -1,0 +1,50 @@
+.desktop-dashboard {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 250px; /* Adjust width as needed */
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  color: white;
+  font-family: 'Cutive Mono', 'Courier New', monospace;
+}
+
+.desktop-dashboard.left {
+  left: 0;
+  align-items: flex-start;
+}
+
+.desktop-dashboard.right {
+  right: 0;
+  align-items: flex-end;
+}
+
+.dashboard-panel {
+  background-color: rgba(10, 20, 30, 0.5);
+  border: 1px solid #00ffff;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+  width: 100%;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+}
+
+.dashboard-panel h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+  color: #00ffff;
+  text-shadow: 0 0 5px #00ffff;
+}
+
+.dashboard-panel p {
+  margin: 5px 0;
+  font-size: 1.2rem;
+}
+
+/* Make Preview canvas fit inside the panel */
+.dashboard-panel div[style*="width: 100%"] {
+    height: 150px !important;
+}

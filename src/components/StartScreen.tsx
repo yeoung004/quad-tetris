@@ -7,35 +7,21 @@ const StartScreen = () => {
   const setIsGameStarted = useSetAtom(isGameStartedAtom);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
+  const handleStart = () => {
+    setIsGameStarted(true);
+    startGame();
+  };
+
   useEffect(() => {
-    // Check for touch capabilities
-    setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
-
-    const handleStart = (e: Event) => {
-      // Prevent space from scrolling the page
-      if (e instanceof KeyboardEvent && e.code === "Space") {
-        e.preventDefault();
-      }
-      setIsGameStarted(true);
-      startGame();
-    };
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space") {
-        handleStart(e);
+        e.preventDefault();
+        handleStart();
       }
     };
-
-    // Add listeners
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("touchstart", handleStart, { once: true });
-    window.addEventListener("click", handleStart, { once: true });
-
-    // Cleanup listeners
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("touchstart", handleStart);
-      window.removeEventListener("click", handleStart);
     };
   }, [setIsGameStarted, startGame]);
 
@@ -57,6 +43,8 @@ const StartScreen = () => {
         cursor: "pointer",
         fontFamily: "'Orbitron', sans-serif",
       }}
+      onClick={handleStart}
+      onTouchStart={handleStart}
     >
       <h1 style={{ fontSize: "3rem", textShadow: "0 0 10px #0ff" }}>
         3D TETRIS
