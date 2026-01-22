@@ -338,7 +338,6 @@ const GameScene = () => {
   const currentBlockGroupRef = useRef<THREE.Group>(null!);
   const tempQuaternion = new THREE.Quaternion();
   const warningStartTime = useRef(0);
-  const camera = useRef<THREE.PerspectiveCamera>(null!);
 
   useEffect(() => {
     if (isWarning) {
@@ -346,7 +345,7 @@ const GameScene = () => {
     }
   }, [isWarning]);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     const targetAngle = activeFace * (Math.PI / 2);
     const targetRotation = new THREE.Euler(0, targetAngle, 0);
     tempQuaternion.setFromEuler(targetRotation);
@@ -450,7 +449,6 @@ const GameScene = () => {
           eskil={false}
           offset={isWarning ? 0.2 : 0.5}
           darkness={isWarning ? 1.2 : 0.5}
-          color="#ff0000"
         />
       </EffectComposer>
     </>
@@ -565,6 +563,7 @@ const GameBoard3D: React.FC = () => {
     >
       {isGameOver && <GameOverOverlay />}
       {levelUpFlash && <LevelUpOverlay />}
+      <NextBlockPreview />
       <Canvas
         style={{ height: "100%", width: "100%", background: "#050505" }}
         camera={{ fov: 60, position: [0, 0, 24] }}
