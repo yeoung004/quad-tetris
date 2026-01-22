@@ -46,6 +46,10 @@ export const isWarningAtom = atom(false);
 export const isInputLockedAtom = atom(false);
 export const collisionBlockAtom = atom<TetrisBlock | null>(null);
 
+export const isGameStartedAtom = atom(false);
+export const isInfoOpenAtom = atom(false);
+export const isHudOpenAtom = atom(false);
+
 // --- Derived Read-only Atoms ---
 
 export const currentGridAtom = atom((get) => {

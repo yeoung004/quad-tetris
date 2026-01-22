@@ -1,20 +1,23 @@
 import { Box, Edges } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette, Noise } from "@react-three/postprocessing";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   activeFaceAtom,
   collisionBlockAtom,
   currentBlockAtom,
+  dropBlockAtom,
   gameOverMessageAtom,
   gridsAtom,
   isFocusModeAtom,
   isGameOverAtom,
   isWarningAtom,
   levelAtom,
+  moveBlockAtom,
   nextBlockAtom,
+  rotateBlockAtom,
   showGhostAtom,
 } from "../atoms/gameAtoms";
 import { GRID_HEIGHT, GRID_WIDTH, isValidMove } from "../engine/grid";
@@ -488,6 +491,57 @@ const LevelUpOverlay = () => {
 const GameBoard3D: React.FC = () => {
   const isGameOver = useAtomValue(isGameOverAtom);
   const level = useAtomValue(levelAtom);
+  const moveBlock = useSetAtom(moveBlockAtom);
+  const rotateBlock = useSetAtom(rotateBlockAtom);
+  const dropBlock = useSetAtom(dropBlockAtom);
+
+
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number; time: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length > 1) return;
+    setTouchStart({
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart || e.changedTouches.length > 1) return;
+
+    const touchEnd = {
+      x: e.changedTouches[0].clientX,
+      y: e.changedTouches[0].clientY,
+      time: Date.now(),
+    };
+
+    const deltaX = touchEnd.x - touchStart.x;
+    const deltaY = touchEnd.y - touchStart.y;
+    const deltaTime = touchEnd.time - touchStart.time;
+
+    // TAP LOGIC
+    if (deltaTime < 250 && Math.abs(deltaX) < 20 && Math.abs(deltaY) < 20) {
+      rotateBlock();
+      return;
+    }
+    
+    // SWIPE LOGIC
+    const swipeThreshold = 50;
+    if (Math.abs(deltaX) > Math.abs(deltaY)) { // Horizontal swipe
+      if (deltaX > swipeThreshold) {
+        moveBlock({ dx: 1, dy: 0 }); // Right
+      } else if (deltaX < -swipeThreshold) {
+        moveBlock({ dx: -1, dy: 0 }); // Left
+      }
+    } else { // Vertical swipe
+      if (deltaY > swipeThreshold) {
+        dropBlock(); // Down
+      }
+    }
+    setTouchStart(null);
+  };
+
 
   const [levelUpFlash, setLevelUpFlash] = useState(false);
   const prevLevelRef = useRef(level);
@@ -504,10 +558,13 @@ const GameBoard3D: React.FC = () => {
   }, [level]);
 
   return (
-    <div style={{ position: "relative", height: "100vh", width: "100vw" }}>
+    <div 
+      style={{ position: "relative", height: "100%", width: "100%", touchAction: 'none' }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {isGameOver && <GameOverOverlay />}
       {levelUpFlash && <LevelUpOverlay />}
-      <NextBlockPreview />
       <Canvas
         style={{ height: "100%", width: "100%", background: "#050505" }}
         camera={{ fov: 60, position: [0, 0, 24] }}
