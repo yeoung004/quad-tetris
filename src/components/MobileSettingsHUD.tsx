@@ -1,59 +1,100 @@
-import React, { useState } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
-import useWindowSize from '../hooks/useWindowSize';
-import { isFocusModeAtom, showGhostAtom, toggleFocusModeAtom, toggleGhostAtom } from '../atoms/gameAtoms';
-import './MobileSettingsHUD.css';
+import React, { useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import useWindowSize from "../hooks/useWindowSize";
+import {
+  isFocusModeAtom,
+  showGhostAtom,
+  toggleFocusModeAtom,
+  toggleGhostAtom,
+} from "../atoms/gameAtoms";
+import "./MobileSettingsHUD.css";
 
 const GearIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19-.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69-.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
-    </svg>
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    style={{ filter: "drop-shadow(0 0 5px #00ffff)" }} // 네온 글로우 효과
+  >
+    <path
+      d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+      stroke="#00ffff"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M19.4 15L21.4 12L19.4 9M4.6 9L2.6 12L4.6 15M15 19.4L12 21.4L9 19.4M9 4.6L12 2.6L15 4.6M17.8 17.8L19.2 19.2M6.2 6.2L4.8 4.8M6.2 17.8L4.8 19.2M17.8 6.2L19.2 4.8"
+      stroke="#00ffff"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
 );
 
-const ToggleSwitch = ({ label, isChecked, onToggle }: { label: string, isChecked: boolean, onToggle: () => void }) => (
-    <div className="setting-row">
-        <label htmlFor={label}>{label}</label>
-        <label className="switch">
-            <input id={label} type="checkbox" checked={isChecked} onChange={onToggle} />
-            <span className="slider"></span>
-        </label>
-    </div>
+const ToggleSwitch = ({
+  label,
+  isChecked,
+  onToggle,
+}: {
+  label: string;
+  isChecked: boolean;
+  onToggle: () => void;
+}) => (
+  <div className="setting-row">
+    <label htmlFor={label}>{label}</label>
+    <label className="switch">
+      <input
+        id={label}
+        type="checkbox"
+        checked={isChecked}
+        onChange={onToggle}
+      />
+      <span className="slider"></span>
+    </label>
+  </div>
 );
 
 export const MobileSettingsHUD: React.FC = () => {
-    const { width } = useWindowSize();
-    const [isMenuOpen, setMenuOpen] = useState(false);
+  const { width } = useWindowSize();
+  const [isMenuOpen, setMenuOpen] = useState(false);
 
-    const isFocusMode = useAtomValue(isFocusModeAtom);
-    const showGhost = useAtomValue(showGhostAtom);
-    
-    const toggleFocusMode = useSetAtom(toggleFocusModeAtom);
-    const toggleGhost = useSetAtom(toggleGhostAtom);
+  const isFocusMode = useAtomValue(isFocusModeAtom);
+  const showGhost = useAtomValue(showGhostAtom);
 
-    if (width >= 1024) {
-        return null; // Don't render on desktop
-    }
+  const toggleFocusMode = useSetAtom(toggleFocusModeAtom);
+  const toggleGhost = useSetAtom(toggleGhostAtom);
 
-    return (
-        <div className="settings-hud">
-            <button className="settings-button" onClick={() => setMenuOpen(prev => !prev)}>
-                <GearIcon />
-            </button>
+  if (width >= 1024) {
+    return null; // Don't render on desktop
+  }
 
-            {isMenuOpen && (
-                <div className="settings-menu">
-                    <ToggleSwitch 
-                        label="Focus Mode"
-                        isChecked={isFocusMode}
-                        onToggle={toggleFocusMode}
-                    />
-                    <ToggleSwitch 
-                        label="Ghost Mode"
-                        isChecked={showGhost}
-                        onToggle={toggleGhost}
-                    />
-                </div>
-            )}
+  return (
+    <div className="settings-hud">
+      <button
+        className="settings-button"
+        onClick={() => setMenuOpen((prev) => !prev)}
+      >
+        <GearIcon />
+      </button>
+
+      {isMenuOpen && (
+        <div className="settings-menu">
+          <ToggleSwitch
+            label="Focus Mode"
+            isChecked={isFocusMode}
+            onToggle={toggleFocusMode}
+          />
+          <ToggleSwitch
+            label="Ghost Mode"
+            isChecked={showGhost}
+            onToggle={toggleGhost}
+          />
         </div>
-    );
+      )}
+    </div>
+  );
 };

@@ -39,10 +39,7 @@ const DesktopDashboard: React.FC = () => {
           <h2>Next</h2>
           <NextBlockPreview />
         </div>
-        <div className="dashboard-panel">
-            <h2>Controls</h2>
-            <KeyHints />
-        </div>
+        <KeyHints />
       </div>
     </>
   );
