@@ -5,6 +5,7 @@ import GameBoard3D from "./components/GameBoard3D";
 import GameController from "./components/GameController";
 import MobileControls from "./components/MobileControls";
 import MobileHUD from "./components/MobileHUD";
+import { MobileSettingsHUD } from "./components/MobileSettingsHUD";
 import StartScreen from "./components/StartScreen";
 import DesktopDashboard from "./components/DesktopDashboard";
 import "./components/MobileUI.css";
@@ -25,6 +26,7 @@ const App: React.FC = () => {
 
           <MobileHUD />
           <MobileControls />
+          <MobileSettingsHUD />
           <DesktopDashboard />
           <GameBoard3D />
         </>

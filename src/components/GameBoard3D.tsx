@@ -438,7 +438,7 @@ const GameBoard3D: React.FC = () => {
 
   return (
     <div 
-      style={{ position: "relative", height: "100%", width: "100%", touchAction: 'none' }}
+      style={{ position: "relative", height: "100%", width: "100%", touchAction: 'none', userSelect: 'none' }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
