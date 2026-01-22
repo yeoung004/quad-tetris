@@ -10,10 +10,18 @@
         margin: 0;
         background-color: #111;
         overflow: hidden; /* Prevent scrollbars */
+        touch-action: none !important;
+        user-select: none !important;
+        -webkit-user-drag: none !important;
+        -webkit-touch-callout: none !important;
       }
       #root {
         width: 100vw;
         height: 100dvh; /* Use dynamic viewport height */
+        touch-action: none !important;
+        user-select: none !important;
+        -webkit-user-drag: none !important;
+        -webkit-touch-callout: none !important;
       }
       canvas {
         display: block;
@@ -22,6 +30,15 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      document.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) e.preventDefault(); // Disable multi-touch zoom
+      }, { passive: false });
+      
+      document.addEventListener('touchmove', (e) => {
+        e.preventDefault(); // Forcefully kill all scrolling and dragging
+      }, { passive: false });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

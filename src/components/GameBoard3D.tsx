@@ -421,6 +421,20 @@ const GameBoard3D: React.FC = () => {
   const level = useAtomValue(levelAtom);
   const { handleTouchStart, handleTouchEnd } = useGameActions();
 
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const gameContainer = gameContainerRef.current;
+    if (gameContainer) {
+      gameContainer.addEventListener('touchstart', handleTouchStart, { passive: false });
+      gameContainer.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+      return () => {
+        gameContainer.removeEventListener('touchstart', handleTouchStart);
+        gameContainer.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [handleTouchStart, handleTouchEnd]);
 
   const [levelUpFlash, setLevelUpFlash] = useState(false);
   const prevLevelRef = useRef(level);
@@ -438,9 +452,8 @@ const GameBoard3D: React.FC = () => {
 
   return (
     <div 
-      style={{ position: "relative", height: "100%", width: "100%", touchAction: 'none', userSelect: 'none' }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      style={{ position: "relative", height: "100%", width: "100%", touchAction: 'none !important', userSelect: 'none', WebkitTouchCallout: 'none' }}
+      ref={gameContainerRef}
     >
       {isGameOver && <GameOverOverlay />}
       {levelUpFlash && <LevelUpOverlay />}

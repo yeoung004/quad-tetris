@@ -110,7 +110,8 @@ export const startGameAtom = atom(null, (_get, set) => {
   set(currentBlockAtom, spawnNewBlock());
   set(nextBlockAtom, spawnNewBlock());
   set(scoreAtom, 0);
-  set(isGameOverAtom, false);
+  set(isGameOverAtom, false); // Ensure game over is reset
+  set(isGameStartedAtom, true); // Ensure game started is set to true
   set(levelAtom, 1);
   set(linesClearedAtom, 0);
   set(isLockingAtom, false);

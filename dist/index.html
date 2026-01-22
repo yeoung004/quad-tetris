@@ -10,19 +10,36 @@
         margin: 0;
         background-color: #111;
         overflow: hidden; /* Prevent scrollbars */
+        touch-action: none !important;
+        user-select: none !important;
+        -webkit-user-drag: none !important;
+        -webkit-touch-callout: none !important;
       }
       #root {
         width: 100vw;
         height: 100dvh; /* Use dynamic viewport height */
+        touch-action: none !important;
+        user-select: none !important;
+        -webkit-user-drag: none !important;
+        -webkit-touch-callout: none !important;
       }
       canvas {
         display: block;
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-D04g8J6W.js"></script>
+    <script type="module" crossorigin src="/assets/index-DNCYplLl.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DdrG71kt.css">
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      document.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) e.preventDefault(); // Disable multi-touch zoom
+      }, { passive: false });
+      
+      document.addEventListener('touchmove', (e) => {
+        e.preventDefault(); // Forcefully kill all scrolling and dragging
+      }, { passive: false });
+    </script>
   </body>
 </html>

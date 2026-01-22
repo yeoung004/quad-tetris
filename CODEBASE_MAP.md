@@ -31,7 +31,12 @@
     │   ├── MobileSettingsHUD.tsx
     │   ├── MobileUI.css
     │   ├── NextBlockPreview.tsx
-    │   └── StartScreen.tsx
+    │   ├── StartScreen.tsx
+    │   └── GameOverUI.tsx
+    └── hooks/
+        ├── useGameActions.ts
+        ├── useWindowSize.ts
+        └── useIsMobile.ts
 `
 
 ## 2. 파일 분석 (File-by-File Analysis)
@@ -43,27 +48,44 @@
 ### `src/main.tsx`
 - **주요 역할**: React 애플리케이션의 진입점.
 
-### `src/App.tsx`
-- **주요 역할**: 애플리케이션의 최상위 컴포넌트. `isGameStarted` 상태에 따라 `StartScreen` 또는 주요 게임 컴포넌트들(`GameBoard3D`, `MobileHUD`, `DesktopDashboard`, `MobileSettingsHUD` 등)을 렌더링합니다.
-- **핵심 로직**: 모바일과 데스크탑 UI 컴포넌트를 모두 포함하여 반응형 레이아웃의 기반을 마련합니다.
+### `index.html` (Updated: Absolute Touch Suppression)
+- **주요 역할**: 애플리케이션의 HTML 골격 및 전역 설정.
+- **핵심 로직 (추가/수정)**:
+    - `body`와 `#root` 요소에 `touch-action: none !important;`, `user-select: none !important;`, `-webkit-user-drag: none !important;`, `-webkit-touch-callout: none !important;` 스타일이 적용되어 모바일 브라우저의 기본 터치 동작(스크롤, 확대, 텍스트 선택, 컨텍스트 메뉴, 드래그)을 전역적으로 비활성화합니다.
+    - `height: 100dvh;`가 `#root`에 적용되어 iOS Safari의 바운스 효과를 방지합니다.
+    - 전역 `touchstart` 및 `touchmove` 이벤트 리스너가 `passive: false` 옵션과 함께 추가되어, `e.preventDefault()`를 통해 모든 기본 터치 제스처(특히 멀티터치 줌)를 강제로 비활성화합니다.
 
-### `src/atoms/gameAtoms.ts`
+### `src/App.tsx` (Updated: Game Over UI Integration)
+- **주요 역할**: 애플리케이션의 최상위 컴포넌트. `isGameStarted` 상태에 따라 `StartScreen`, `GameOverUI`, 또는 주요 게임 컴포넌트들(`GameBoard3D`, `MobileHUD`, `DesktopDashboard`, `MobileSettingsHUD` 등)을 렌더링합니다.
+- **핵심 로직**:
+    - `isGameStarted`가 `false`일 때 `StartScreen`을 렌더링합니다.
+    - `isGameStarted`가 `true`이고 `isGameOver`가 `true`일 때 `GameOverUI`를 렌더링하며, `onRestart` prop을 통해 `startGame` 액션을 전달합니다.
+    - 게임이 시작되었고 종료되지 않았을 때만 실제 게임 UI 컴포넌트들을 렌더링합니다.
+- **의존성**: `jotai` (`isGameStartedAtom`, `isGameOverAtom`, `startGameAtom`), `StartScreen`, `GameOverUI`.
+
+### `src/atoms/gameAtoms.ts` (Updated: Game State Initialization)
 - **주요 역할**: 게임의 모든 상태와 관련 액션을 원자(atom) 단위로 정의합니다. 상태와 로직이 한 곳에 모여있습니다.
 - **핵심 atom**:
-    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isGameStartedAtom`, `isHudOpenAtom`, `isFastDroppingAtom`, `isFocusModeAtom`, `showGhostAtom` 등.
+    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isGameStartedAtom`, `isGameOverAtom`, `isHudOpenAtom`, `isFastDroppingAtom`, `isFocusModeAtom`, `showGhostAtom` 등.
     - **Derived Atoms**: `currentGridAtom` 같이 다른 atom을 조합하여 만드는 읽기 전용 파생 상태.
     - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `rotateBlockAtom`, `changeFaceAtom`, `toggleFocusModeAtom`, `toggleGhostAtom` 등.
+- **주요 변경 사항**: `startGameAtom`이 호출될 때 `isGameStartedAtom`을 `true`로 설정하고 `isGameOverAtom`을 `false`로 명시적으로 초기화하여 게임 시작/재시작 시 상태 일관성을 보장합니다.
 - **의존성**: `jotai`.
 
 ### `src/hooks/useWindowSize.ts`
 - **주요 역할**: 브라우저 창의 크기가 변경될 때마다 현재 너비와 높이를 반환하는 커스텀 훅입니다.
 - **핵심 로직**: `resize` 이벤트 리스너를 사용하여 창 크기를 상태로 관리합니다.
-- **사용처**: `DesktopDashboard`, `MobileHUD`, `MobileControls`, `MobileSettingsHUD` 에서 화면 크기에 따라 UI를 조건부로 렌더링하는 데 사용됩니다.
+- **사용처**: `DesktopDashboard`, `MobileHUD`, `MobileControls`, `MobileSettingsHUD`, `InstructionOverlay`, `useIsMobile` 에서 화면 크기에 따라 UI를 조건부로 렌더링하는 데 사용됩니다.
+
+### `src/hooks/useIsMobile.ts` (New: Mobile Device Detection)
+- **주요 역할**: `useWindowSize` 훅을 기반으로 현재 장치가 모바일인지 여부를 감지하는 새로운 커스텀 훅입니다.
+- **핵심 로직**: `useWindowSize`에서 얻은 `width`를 사용하여 특정 브레이크포인트(예: `< 768px`) 미만일 경우 `isMobile`을 `true`로 반환합니다.
+- **사용처**: `StartScreen`, `GameOverUI` 등에서 장치별 UI 메시징을 위해 사용됩니다.
 
 ### `src/hooks/useGameActions.ts`
 - **주요 역할**: 모바일 터치 입력을 처리하는 커스텀 훅입니다. 탭, 롱 프레스, 스와이프 제스처를 구분하여 게임 액션을 트리거합니다.
 - **핵심 로직**:
-    - `onTouchStart`와 `onTouchEnd` 이벤트에 `e.preventDefault()`를 사용하여 브라우저 기본 동작(스크롤, 확대)을 완벽히 비활성화합니다.
+    - `onTouchStart`와 `onTouchEnd` 이벤트에 `e.preventDefault()`를 사용하여 브라우저 기본 동작(스크롤, 확대)을 비활성화합니다. 전역 `e.preventDefault()`가 추가되었지만, 이 컴포넌트의 명시적 호출은 로직의 견고성을 유지합니다.
     - 짧은 탭은 블록 회전(`rotateBlock`)을 실행합니다.
     - 200ms 이상 길게 누르면 "Fast Drop" 모드(`isFastDroppingAtom`)를 활성화합니다.
     - 스와이프는 블록을 좌우로 이동(`moveBlock`)하거나 아래로 드롭(`dropBlock`)시킵니다.
@@ -78,12 +100,12 @@
     - **`isFastDroppingAtom` 상태를 구독하여 `true`일 경우 게임 루프의 속도를 높여 블록을 빠르게 내립니다.**
 - **의존성**: `react`, `jotai`, `gameAtoms.ts`.
 
-### `src/components/GameBoard3D.tsx`
+### `src/components/GameBoard3D.tsx` (Updated: Absolute Touch Suppression)
 - **주요 역할**: `three.js`를 사용하여 게임의 3D 렌더링을 담당하고, 모바일 입력을 처리합니다.
-- **핵심 로직**:
+- **핵심 로직 (추가/수정)**:
     - `@react-three/fiber`의 `Canvas`를 설정하고, 3D 씬을 구성합니다.
-    - 최상위 `div`에 `touch-action: none`과 `user-select: none` 스타일을 적용하여 모바일 드래그와 선택을 방지합니다.
-    - **`useGameActions` 훅을 사용하여 터치 이벤트를 처리하고, 해당 핸들러(`handleTouchStart`, `handleTouchEnd`)를 최상위 `div`에 바인딩합니다.**
+    - 최상위 `div`에 `touch-action: none !important`, `user-select: none`, `-webkit-touch-callout: none` 스타일을 적용하여 모바일 드래그, 선택 및 컨텍스트 메뉴를 방지합니다.
+    - `useGameActions` 훅을 사용하여 터치 이벤트를 처리하고, 해당 핸들러(`handleTouchStart`, `handleTouchEnd`)를 최상위 `div`에 바인딩합니다.
 - **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`, `useGameActions.ts`.
 
 ### `src/components/MobileControls.tsx`
@@ -99,7 +121,7 @@
 - **주요 역할**: 게임 방법, 조작법, 승리 조건을 설명하는 오버레이 컴포넌트입니다.
 - **핵심 로직**:
     - `StartScreen`에 있는 '?' 버튼을 통해 활성화됩니다.
-    - `useWindowSize` 훅을 사용하여 모바일과 데스크탑에 각기 다른 레이아웃을 보여줍니다. (모바일: 세로 스크롤, 데스크탑: 고정 대시보드)
+    - `useWindowSize` 훅을 사용하여 모바일와 데스크탑에 각기 다른 레이아웃을 보여줍니다. (모바일: 세로 스크롤, 데스크탑: 고정 대시보드)
     - 부드러운 fade-in 효과를 위한 CSS 애니메이션을 포함합니다.
 - **의존성**: `react`, `useWindowSize.ts`.
 
@@ -132,12 +154,21 @@
 - **사용처**: `MobileHUD`와 `DesktopDashboard`에서 모두 사용됩니다.
 - **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`.
 
-### `src/components/StartScreen.tsx`
-- **주요 역할**: 게임 시작 화면을 표시합니다.
-- **핵심 로직**: 
-    - `startGameAtom`을 호출하여 게임을 시작합니다.
-    - 이제 `window`가 아닌 컴포넌트 자체의 클릭/터치 이벤트만 감지하여 다른 UI와의 충돌을 방지합니다.
+### `src/components/StartScreen.tsx` (Updated: Adaptive Restart Messaging)
+- **주요 역할**: 게임 시작 화면을 표시합니다. 이제 게임 재시작 화면으로도 사용됩니다.
+- **핵심 로직**:
+    - `startGameAtom`을 호출하여 게임을 시작하거나 재시작합니다.
+    - `useIsMobile` 훅을 사용하여 장치 유형에 따라 "PRESS SPACE TO RESTART" 또는 "TOUCH SCREEN TO RESTART" 메시지를 조건부로 렌더링합니다.
     - **화면 우측 상단에 '?' 아이콘(도움말 버튼)을 포함합니다. 이 버튼을 클릭하면 `InstructionOverlay`가 나타나 게임 방법을 안내합니다.**
+- **의존성**: `jotai` (`isGameStartedAtom`, `startGameAtom`), `useIsMobile`, `InstructionOverlay`.
+
+### `src/components/GameOverUI.tsx` (New: Game Over Display)
+- **주요 역할**: 게임 종료 시 "GAME OVER" 메시지와 재시작 옵션을 표시하는 컴포넌트입니다.
+- **핵심 로직**:
+    - `onRestart` prop을 받아 게임 재시작 로직을 트리거합니다.
+    - `useIsMobile` 훅을 사용하여 장치 유형에 따라 "PRESS SPACE TO RESTART" 또는 "TOUCH SCREEN TO RESTART" 메시지를 조건부로 렌더링합니다.
+    - `App.tsx`에서 `isGameOver` 상태에 따라 조건부로 렌더링됩니다.
+- **의존성**: `useIsMobile`.
 
 ### `src/engine/grid.ts`
 - **주요 역할**: 그리드 생성, 충돌 검사 등 상태와 무관한 순수 함수들을 포함하는 유틸리티 파일입니다.
@@ -146,20 +177,23 @@
 
 Jotai 아키텍처는 분산된 atom들의 네트워크를 통해 상태를 관리합니다. UI는 반응형으로 설계되었습니다.
 
-1.  **상태 정의 (`gameAtoms.ts`)**: 게임의 모든 상태(`grids`, `score`, `isFastDroppingAtom`, `isFocusModeAtom`, `showGhostAtom` 등)가 독립적인 `atom`으로 존재합니다.
+1.  **상태 정의 (`gameAtoms.ts`)**: 게임의 모든 상태(`grids`, `score`, `isFastDroppingAtom`, `isFocusModeAtom`, `showGhostAtom` 등)가 독립적인 `atom`으로 존재합니다. 이제 `isGameOverAtom`이 게임 종료 상태를 관리하며, `startGameAtom`은 게임 시작 및 재시작 시 상태를 올바르게 초기화합니다.
 
 2.  **UI 렌더링 (Responsive)**:
     - `useWindowSize` 훅이 화면 크기를 감지합니다.
     - 데스크탑 크기(`>=1024px`)에서는 `DesktopDashboard`가 렌더링되어 영구적인 정보 패널을 보여줍니다. `MobileHUD`, `MobileControls`, `MobileSettingsHUD`는 숨겨집니다.
     - 모바일 크기(`<1024px`)에서는 `MobileHUD`('i' 버튼을 누르는 동안 정보 표시), `MobileControls`(좌우 터치 영역), `MobileSettingsHUD`(설정 메뉴)가 렌더링됩니다. `DesktopDashboard`는 숨겨집니다.
+    - `App.tsx`는 `isGameStarted`와 `isGameOver` 상태에 따라 `StartScreen`, `GameOverUI`, 또는 실제 게임 UI를 조건부로 렌더링합니다.
 
 3.  **액션 실행 (`GameController`, `useGameActions` 등)**:
     - **키보드 입력 (`GameController`)**: `keydown` 이벤트에 따라 `moveBlockAtom`, `rotateBlockAtom` 등의 atom을 직접 호출합니다.
     - **터치 입력 (`GameBoard3D` -> `useGameActions`)**: `GameBoard3D`의 터치 이벤트는 `useGameActions` 훅으로 위임됩니다. 이 훅은 제스처(탭, 롱 프레스, 스와이프)를 분석하여 `moveBlockAtom`, `rotateBlockAtom`, `isFastDroppingAtom` 등의 상태를 업데이트합니다.
     - `MobileControls`는 `changeFaceAtom`을 호출하여 뷰를 회전시킵니다.
     - `MobileSettingsHUD`는 `toggleFocusModeAtom`과 `toggleGhostAtom`을 호출하여 게임 설정을 변경합니다.
+    - `StartScreen`과 `GameOverUI`는 사용자의 입력에 따라 `startGameAtom`을 호출하여 게임을 시작하거나 재시작합니다.
 
 4.  **상태 전파 및 리렌더링**:
     - `scoreAtom`의 상태가 변경되면, 이 atom을 구독하는 `DesktopDashboard` 또는 `MobileHUD` 컴포넌트의 점수 표시 부분만 리렌더링됩니다.
     - `isFastDroppingAtom`이 `true`가 되면 `GameController`의 게임 루프가 더 빠른 속도로 재시작됩니다.
+    - `isGameStartedAtom` 또는 `isGameOverAtom`의 변경은 `App.tsx`의 최상위 조건부 렌더링에 영향을 미쳐 `StartScreen`, `GameOverUI`, 또는 게임 화면으로 전환되도록 합니다.
     - 상태 변경이 발생한 atom을 구독하는 컴포넌트만 정확히 리렌더링되므로, 불필요한 렌더링이 최소화됩니다.

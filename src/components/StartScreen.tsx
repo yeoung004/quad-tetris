@@ -1,12 +1,13 @@
 import { useSetAtom } from "jotai";
 import { isGameStartedAtom, startGameAtom } from "../atoms/gameAtoms";
 import { useEffect, useState } from "react";
-import InstructionOverlay from "./InstructionOverlay"; // Import the overlay
+import InstructionOverlay from "./InstructionOverlay";
+import { useIsMobile } from "../hooks/useIsMobile"; // Import the custom hook
 
 const StartScreen = () => {
   const startGame = useSetAtom(startGameAtom);
   const setIsGameStarted = useSetAtom(isGameStartedAtom);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const isMobile = useIsMobile(); // Use the custom hook
   const [showInstructions, setShowInstructions] = useState(false); // State for overlay
 
   const handleStart = () => {
@@ -18,15 +19,6 @@ const StartScreen = () => {
     e.stopPropagation(); // Prevent the main container's click/touch handler
     setShowInstructions(!showInstructions);
   };
-
-  useEffect(() => {
-    const onTouch = () => {
-      setIsTouchDevice(true);
-      window.removeEventListener('touchstart', onTouch);
-    };
-    window.addEventListener('touchstart', onTouch);
-    return () => window.removeEventListener('touchstart', onTouch);
-  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -64,7 +56,7 @@ const StartScreen = () => {
           3D TETRIS
         </h1>
         <p style={{ fontSize: "1.5rem", marginTop: "1rem" }}>
-          {isTouchDevice ? "Touch to START" : "Press SPACE to START"}
+          {isMobile ? "TOUCH SCREEN TO RESTART" : "PRESS SPACE TO RESTART"}
         </p>
       </div>
 

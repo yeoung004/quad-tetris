@@ -25,7 +25,7 @@ export const useGameActions = () => {
     longPressTimer: number | null;
   } | null>(null);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = (e: TouchEvent) => {
     e.preventDefault();
     if (e.touches.length > 1) return;
     const { clientX, clientY } = e.touches[0];
@@ -44,7 +44,7 @@ export const useGameActions = () => {
     };
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchEnd = (e: TouchEvent) => {
     e.preventDefault();
     if (!touchState.current || e.changedTouches.length > 1) return;
     
