@@ -50,6 +50,21 @@ export function isValidMove(
           ) {
             return false; // Collision with an existing block
           }
+          
+          // Shared edge collision check
+          if (checkX === 0) {
+            const prevFaceIndex = (face - 1 + NUM_FACES) % NUM_FACES;
+            const prevGrid = grids[prevFaceIndex];
+            if (prevGrid && prevGrid[newY] && prevGrid[newY][GRID_WIDTH - 1] !== 0) {
+              return false;
+            }
+          } else if (checkX === GRID_WIDTH - 1) {
+            const nextFaceIndex = (face + 1) % NUM_FACES;
+            const nextGrid = grids[nextFaceIndex];
+            if (nextGrid && nextGrid[newY] && nextGrid[newY][0] !== 0) {
+              return false;
+            }
+          }
         }
       }
     }

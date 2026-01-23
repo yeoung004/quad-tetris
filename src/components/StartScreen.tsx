@@ -3,6 +3,8 @@ import { isGameStartedAtom, startGameAtom } from "../atoms/gameAtoms";
 import { useEffect, useState, useCallback } from "react";
 import InstructionOverlay from "./InstructionOverlay";
 import { useIsMobile } from "../hooks/useIsMobile"; // Import the custom hook
+import HelpButton from "./HelpButton";
+import "./HelpButton.css";
 
 const StartScreen = () => {
   const startGame = useSetAtom(startGameAtom);
@@ -11,9 +13,10 @@ const StartScreen = () => {
   const [showInstructions, setShowInstructions] = useState(false); // State for overlay
 
   const handleStart = useCallback(() => {
+    if (showInstructions) return;
     setIsGameStarted(true);
     startGame();
-  }, [setIsGameStarted, startGame]);
+  }, [setIsGameStarted, startGame, showInstructions]);
 
   const toggleInstructions = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation(); // Prevent the main container's click/touch handler
@@ -56,32 +59,17 @@ const StartScreen = () => {
           3D TETRIS
         </h1>
         <p style={{ fontSize: "1.5rem", marginTop: "1rem" }}>
-          {isMobile ? "TOUCH SCREEN TO RESTART" : "PRESS SPACE TO RESTART"}
+          {isMobile ? "TOUCH SCREEN TO START" : "PRESS SPACE TO START"}
         </p>
       </div>
 
-      {/* Help Button */}
-      <div
-        style={{
-          position: "absolute",
-          top: "2rem",
-          right: "2rem",
-          zIndex: 101, // Higher z-index to be on top of the start screen
-          cursor: "pointer",
-          fontSize: "2rem",
-          color: "#fff",
-          textShadow: "0 0 5px #0ff",
-        }}
-        onClick={toggleInstructions}
-        onTouchStart={toggleInstructions}
-      >
-        ?
-      </div>
+      <HelpButton onClick={toggleInstructions} />
 
       {/* Instructions Overlay */}
       {showInstructions && <InstructionOverlay onClose={() => setShowInstructions(false)} />}
     </>
   );
 };
+
 
 export default StartScreen;

@@ -143,16 +143,15 @@ export const moveBlockAtom = atom(
     nextBlock.position = newPos;
     nextBlock.shape = currentBlock.shape;
     
-    // The core logic change is here. We now pass the whole world state to isValidMove.
     if (isValidMove(grids, activeFace, nextBlock, newPos)) {
-      // If the move is valid, we might need to wrap the block and change face
       let newActiveFace = activeFace;
-      if (newPos.x < 0) {
-        // Moved past the left edge
+      const isOffScreenLeft = newPos.x + nextBlock.width <= 0;
+      const isOffScreenRight = newPos.x >= GRID_WIDTH;
+
+      if (isOffScreenLeft) {
         newActiveFace = (activeFace - 1 + 4) % 4;
-        nextBlock.position.x = GRID_WIDTH + newPos.x;
-      } else if (newPos.x >= GRID_WIDTH) {
-        // Moved past the right edge
+        nextBlock.position.x = newPos.x + GRID_WIDTH;
+      } else if (isOffScreenRight) {
         newActiveFace = (activeFace + 1) % 4;
         nextBlock.position.x = newPos.x - GRID_WIDTH;
       }
@@ -163,7 +162,6 @@ export const moveBlockAtom = atom(
       }
       set(isLockingAtom, false);
     } else if (dy === 1) {
-      // If it's an invalid downward move, lock the piece.
       set(isLockingAtom, true);
     }
   }
@@ -262,6 +260,15 @@ export const placeBlockAtom = atom(null, (get, set) => {
           targetX < GRID_WIDTH
         ) {
           newGrids[targetFace][gridY][targetX] = currentBlock.type;
+
+          // Shared edge logic: also write to the adjacent face's corresponding edge column
+          if (targetX === 0) {
+            const prevFaceIndex = (targetFace - 1 + 4) % 4;
+            if(newGrids[prevFaceIndex][gridY]) newGrids[prevFaceIndex][gridY][GRID_WIDTH - 1] = currentBlock.type;
+          } else if (targetX === GRID_WIDTH - 1) {
+            const nextFaceIndex = (targetFace + 1) % 4;
+            if(newGrids[nextFaceIndex][gridY]) newGrids[nextFaceIndex][gridY][0] = currentBlock.type;
+          }
         }
       }
     });

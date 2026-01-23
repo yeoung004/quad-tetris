@@ -1,8 +1,8 @@
 # Codebase Map (Jotai Atomic State)
 
-이 문서는 Tetris 프로젝트의 구조, 핵심 로직, 파일별 역할을 설명하여 AI가 프로젝트를 쉽게 이해하고 컨텍스트를 파악할 수 있도록 돕습니다. 이 버전은 **Jotai**를 사용한 아토믹 상태 관리 아키텍처를 반영합니다.
+This document explains the structure, core logic, and file roles of the Tetris project to help the AI ​​understand the project and grasp the context. This version reflects the atomic state management architecture using **Jotai**.
 
-## 1. 프로젝트 구조 (Project Structure)
+## 1. Project Structure
 
 `└── StartScreen.tsx
 /
@@ -32,200 +32,195 @@
     │   ├── MobileUI.css
     │   ├── NextBlockPreview.tsx
     │   ├── StartScreen.tsx
-    │   └── GameOverUI.tsx
+    │   ├── GameOverUI.tsx
+    │   ├── HelpButton.tsx
+    │   └── HelpButton.css
     └── hooks/
         ├── useGameActions.ts
         ├── useWindowSize.ts
         └── useIsMobile.ts
 `
 
-## 2. 파일 분석 (File-by-File Analysis)
+## 2. File-by-File Analysis
 
 ### `package.json`
-- **주요 역할**: 프로젝트 의존성을 정의합니다. `jotai`가 상태 관리를 위해 추가되었습니다.
-- **핵심 라이브러리**: `react`, `jotai`, `three`, `@react-three/fiber`.
+- **Main role**: Defines project dependencies. `jotai` has been added for state management.
+- **Core Libraries**: `react`, `jotai`, `three`, `@react-three/fiber`.
 
 ### `src/utils/analytics.ts` (New: Google Analytics 4 Utility)
-- **주요 역할**: Google Analytics 4 (GA4) 이벤트를 추적하기 위한 유틸리티 함수들을 포함합니다.
-- **핵심 로직**:
-    - `initializeGA()`: `VITE_GA_MEASUREMENT_ID` 환경 변수를 사용하여 GA4를 초기화합니다. 프로덕션 환경에서만 초기화되도록 설정되어 있습니다.
-    - `trackPageView(path)`: 특정 경로에 대한 페이지 뷰를 GA4로 전송합니다.
-    - `trackEvent(name, params)`: 사용자 정의 이벤트를 GA4로 전송합니다.
-- **의존성**: `react-ga4`.
-- **환경 변수**: `VITE_GA_MEASUREMENT_ID` (GA4 측정 ID).
+- **Main role**: Contains utility functions for tracking Google Analytics 4 (GA4) events.
+- **Core logic**:
+    - `initializeGA()`: Initializes GA4 using the `VITE_GA_MEASUREMENT_ID` environment variable. It is set to initialize only in the production environment.
+    - `trackPageView(path)`: Sends a page view for a specific path to GA4.
+    - `trackEvent(name, params)`: Sends a custom event to GA4.
+- **Dependencies**: `react-ga4`.
+- **Environment variable**: `VITE_GA_MEASUREMENT_ID` (GA4 measurement ID).
 
 ### `src/main.tsx`
-- **주요 역할**: React 애플리케이션의 진입점.
-- **핵심 변경 사항**: `initializeGA()` 함수를 호출하여 애플리케이션 로드 시 GA4를 초기화합니다.
+- **Main role**: Entry point for the React application.
+- **Key Changes**: Calls the `initializeGA()` function to initialize GA4 on application load.
 
 ### `index.html` (Updated: Absolute Touch Suppression)
-- **주요 역할**: 애플리케이션의 HTML 골격 및 전역 설정.
-- **핵심 로직 (추가/수정)**:
-    - `body`와 `#root` 요소에 `touch-action: none !important;`, `user-select: none !important;`, `-webkit-user-drag: none !important;`, `-webkit-touch-callout: none !important;` 스타일이 적용되어 모바일 브라우저의 기본 터치 동작(스크롤, 확대, 텍스트 선택, 컨텍스트 메뉴, 드래그)을 전역적으로 비활성화합니다.
-    - `height: 100dvh;`가 `#root`에 적용되어 iOS Safari의 바운스 효과를 방지합니다.
-    - 전역 `touchstart` 및 `touchmove` 이벤트 리스너가 `passive: false` 옵션과 함께 추가되어, `e.preventDefault()`를 통해 모든 기본 터치 제스처(특히 멀티터치 줌)를 강제로 비활성화합니다.
+- **Main role**: HTML skeleton and global settings for the application.
+- **Core logic (add/modify)**:
+    - `touch-action: none !important;`, `user-select: none !important;`, `-webkit-user-drag: none !important;`, `-webkit-touch-callout: none !important;` styles are applied to the `body` and `#root` elements to globally disable default touch behaviors in mobile browsers (scrolling, zooming, text selection, context menus, dragging).
+    - `height: 100dvh;` is applied to `#root` to prevent the bounce effect in iOS Safari.
+    - Global `touchstart` and `touchmove` event listeners have been added with the `passive: false` option to forcibly disable all default touch gestures (especially multi-touch zoom) through `e.preventDefault()`.
 
 ### `src/App.tsx` (Updated: Game Over UI Integration)
-- **주요 역할**: 애플리케이션의 최상위 컴포넌트. `isGameStarted` 상태에 따라 `StartScreen`, `GameOverUI`, 또는 주요 게임 컴포넌트들(`GameBoard3D`, `MobileHUD`, `DesktopDashboard`, `MobileSettingsHUD` 등)을 렌더링합니다.
-- **핵심 로직**:
-    - `isGameStarted`가 `false`일 때 `StartScreen`을 렌더링합니다.
-    - `isGameStarted`가 `true`이고 `isGameOver`가 `true`일 때 `GameOverUI`를 렌더링하며, `onRestart` prop을 통해 `startGame` 액션을 전달합니다.
-    - 게임이 시작되었고 종료되지 않았을 때만 실제 게임 UI 컴포넌트들을 렌더링합니다.
-- **의존성**: `jotai` (`isGameStartedAtom`, `isGameOverAtom`, `startGameAtom`), `StartScreen`, `GameOverUI`.
+- **Main role**: The top-level component of the application. Renders `StartScreen`, `GameOverUI`, or the main game components (`GameBoard3D`, `MobileHUD`, `DesktopDashboard`, `MobileSettingsHUD`, etc.) depending on the `isGameStarted` state.
+- **Core logic**:
+    - Renders `StartScreen` when `isGameStarted` is `false`.
+    - Renders `GameOverUI` when `isGameStarted` is `true` and `isGameOver` is `true`, passing the `startGame` action through the `onRestart` prop.
+    - Renders the actual game UI components only when the game has started and not ended.
+- **Dependencies**: `jotai` (`isGameStartedAtom`, `isGameOverAtom`, `startGameAtom`), `StartScreen`, `GameOverUI`.
 
-### `src/atoms/gameAtoms.ts` (Updated: Game State Initialization)
-- **주요 역할**: 게임의 모든 상태와 관련 액션을 원자(atom) 단위로 정의합니다. 상태와 로직이 한 곳에 모여있습니다.
-- **핵심 atom**:
-    - **Primitive Atoms**: `gridsAtom`, `currentBlockAtom`, `scoreAtom`, `isGameStartedAtom`, `isGameOverAtom`, `isHudOpenAtom`, `isFastDroppingAtom`, `isFocusModeAtom`, `showGhostAtom` 등.
-    - **Derived Atoms**: `currentGridAtom` 같이 다른 atom을 조합하여 만드는 읽기 전용 파생 상태.
-    - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `rotateBlockAtom`, `changeFaceAtom`, `toggleFocusModeAtom`, `toggleGhostAtom` 등.
-- **주요 변경 사항**: `startGameAtom`이 호출될 때 `isGameStartedAtom`을 `true`로 설정하고 `isGameOverAtom`을 `false`로 명시적으로 초기화하여 게임 시작/재시작 시 상태 일관성을 보장합니다.
-- **의존성**: `jotai`.
+### `src/engine/TetrisBlock.ts`
+- **Main role**: Defines the `TetrisBlock` class, which represents a single Tetris block.
+- **Core logic**:
+    - The `TetrisBlock` class has `width` and `height` properties, which are calculated from the block's shape.
+    - The `width` and `height` properties are updated in the `constructor` and `rotate` methods.
+
+### `src/atoms/gameAtoms.ts` (Updated: Shared Edge & Face-Shifting Logic)
+- **Main role**: Defines all game states and related actions as atoms. State and logic are gathered in one place.
+- **Key atom changes**:
+    - **`moveBlockAtom`**:
+        - **Face-Shifting Logic**: The logic for changing faces has been updated. The face now only changes when the *entire block* has moved off the screen. This is checked using the block's `width` property.
+    - **`placeBlockAtom`**:
+        - **Shared-Edge Logic**: When a block is placed, if it's on a shared edge, it's written to both adjacent grids. This allows blocks to stack on the corners between faces.
 
 ### `src/hooks/useWindowSize.ts`
-- **주요 역할**: 브라우저 창의 크기가 변경될 때마다 현재 너비와 높이를 반환하는 커스텀 훅입니다.
-- **핵심 로직**: `resize` 이벤트 리스너를 사용하여 창 크기를 상태로 관리합니다.
-- **사용처**: `DesktopDashboard`, `MobileHUD`, `MobileControls`, `MobileSettingsHUD`, `InstructionOverlay`, `useIsMobile` 에서 화면 크기에 따라 UI를 조건부로 렌더링하는 데 사용됩니다.
+- **Main role**: A custom hook that returns the current width and height whenever the browser window size changes.
+- **Core logic**: Uses a `resize` event listener to manage the window size as state.
+- **Usage**: Used in `DesktopDashboard`, `MobileHUD`, `MobileControls`, `MobileSettingsHUD`, `InstructionOverlay`, `useIsMobile` to conditionally render the UI based on screen size.
 
 ### `src/hooks/useIsMobile.ts` (New: Mobile Device Detection)
-- **주요 역할**: `useWindowSize` 훅을 기반으로 현재 장치가 모바일인지 여부를 감지하는 새로운 커스텀 훅입니다.
-- **핵심 로직**: `useWindowSize`에서 얻은 `width`를 사용하여 특정 브레이크포인트(예: `< 768px`) 미만일 경우 `isMobile`을 `true`로 반환합니다.
-- **사용처**: `StartScreen`, `GameOverUI` 등에서 장치별 UI 메시징을 위해 사용됩니다.
+- **Main role**: A new custom hook that detects whether the current device is mobile based on the `useWindowSize` hook.
+- **Core logic**: Returns `isMobile` as `true` if the `width` obtained from `useWindowSize` is below a certain breakpoint (e.g., `< 768px`).
+- **Usage**: Used in `StartScreen`, `GameOverUI`, etc. for device-specific UI messaging.
 
 ### `src/hooks/useGameActions.ts`
-- **주요 역할**: 모바일 터치 입력을 처리하는 커스텀 훅입니다. 탭, 롱 프레스, 스와이프 제스처를 구분하여 게임 액션을 트리거합니다.
-- **핵심 로직**:
-    - `onTouchStart`와 `onTouchEnd` 이벤트에 `e.preventDefault()`를 사용하여 브라우저 기본 동작(스크롤, 확대)을 비활성화합니다. 전역 `e.preventDefault()`가 추가되었지만, 이 컴포넌트의 명시적 호출은 로직의 견고성을 유지합니다.
-    - 짧은 탭은 블록 회전(`rotateBlock`)을 실행합니다.
-    - 200ms 이상 길게 누르면 "Fast Drop" 모드(`isFastDroppingAtom`)를 활성화합니다.
-    - 스와이프는 블록을 좌우로 이동(`moveBlock`)하거나 아래로 드롭(`dropBlock`)시킵니다.
-    - 롱 프레스나 스와이프 중에는 회전이 방지됩니다.
-- **사용처**: `GameBoard3D.tsx`.
+- **Main role**: A custom hook that handles mobile touch input. It distinguishes between tap, long press, and swipe gestures to trigger game actions.
+- **Core logic**:
+    - Uses `e.preventDefault()` on `onTouchStart` and `onTouchEnd` events to disable browser default behaviors (scrolling, zooming). Although a global `e.preventDefault()` has been added, the explicit call in this component maintains the robustness of the logic.
+    - A short tap executes a block rotation (`rotateBlock`).
+    - A long press of 200ms or more activates "Fast Drop" mode (`isFastDroppingAtom`).
+    - A swipe moves the block left or right (`moveBlock`) or drops it down (`dropBlock`).
+    - Rotation is prevented during a long press or swipe.
+- **Usage**: `GameBoard3D.tsx`.
 
 ### `src/components/GameController.tsx`
-- **주요 역할**: 게임의 "엔진" 역할을 수행하는 보이지 않는(non-rendering) 컴포넌트입니다. 게임 루프, 키보드 입력, 락 딜레이 등 모든 사이드 이펙트를 처리합니다.
-- **핵심 로직**:
-    - `useSetAtom`으로 `moveBlockAtom`, `changeFaceAtom` 등 액션 atom들의 setter 함수를 가져옵니다.
-    - `useEffect`를 사용하여 키보드 입력을 감지하고 게임 루프를 실행합니다.
-    - **`isFastDroppingAtom` 상태를 구독하여 `true`일 경우 게임 루프의 속도를 높여 블록을 빠르게 내립니다.**
-- **의존성**: `react`, `jotai`, `gameAtoms.ts`.
+- **Main role**: A non-rendering component that acts as the game's "engine". It handles all side effects such as the game loop, keyboard input, and lock delay.
+- **Core logic**:
+    - Gets the setter functions for action atoms like `moveBlockAtom`, `changeFaceAtom`, etc. with `useSetAtom`.
+    - Uses `useEffect` to detect keyboard input and run the game loop.
+    - **Subscribes to the `isFastDroppingAtom` state and speeds up the game loop to drop the block faster when `true`.**
+- **Dependencies**: `react`, `jotai`, `gameAtoms.ts`.
 
 ### `src/components/GameBoard3D.tsx` (Updated: Absolute Touch Suppression)
-- **주요 역할**: `three.js`를 사용하여 게임의 3D 렌더링을 담당하고, 모바일 입력을 처리합니다.
-- **핵심 로직 (추가/수정)**:
-    - `@react-three/fiber`의 `Canvas`를 설정하고, 3D 씬을 구성합니다.
-    - 최상위 `div`에 `touch-action: none !important`, `user-select: none`, `-webkit-touch-callout: none` 스타일을 적용하여 모바일 드래그, 선택 및 컨텍스트 메뉴를 방지합니다.
-    - `useGameActions` 훅을 사용하여 터치 이벤트를 처리하고, 해당 핸들러(`handleTouchStart`, `handleTouchEnd`)를 최상위 `div`에 바인딩합니다.
-- **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`, `useGameActions.ts`.
+- **Main role**: Responsible for the 3D rendering of the game using `three.js` and handles mobile input.
+- **Core logic (add/modify)**:
+    - Sets up the `Canvas` from `@react-three/fiber` and configures the 3D scene.
+    - Applies `touch-action: none !important`, `user-select: none`, `-webkit-touch-callout: none` styles to the top-level `div` to prevent mobile drag, selection, and context menus.
+    - Uses the `useGameActions` hook to handle touch events and binds the corresponding handlers (`handleTouchStart`, `handleTouchEnd`) to the top-level `div`.
+- **Dependencies**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`, `useGameActions.ts`.
 
 ### `src/components/MobileControls.tsx`
-- **주요 역할**: 모바일 전용의 화면 좌우 터치 영역을 제공하여 큐브의 면(face)을 회전시킵니다.
-- **핵심 로직**:
-    - `useWindowSize` 훅을 사용하여 데스크탑 뷰포트에서는 렌더링되지 않습니다.
-    - `changeFaceAtom`을 호출하여 큐브 면 변경을 트리거합니다.
-    - **이제 화면 좌우에 반투명 네온 스타일의 세로 막대로 표시되어 사용자가 명확히 인지할 수 있습니다. 각 막대에는 '<', '>' 아이콘이 포함되어 있으며, 탭하면 빛나는 효과가 나타납니다.**
-    - 터치/클릭 이벤트에 300ms의 디바운스를 적용하여 한 번의 탭으로 여러 번의 액션이 발생하는 것을 방지합니다.
-- **의존성**: `react`, `jotai`, `gameAtoms.ts`, `useWindowSize.ts`.
+- **Main role**: Provides mobile-only on-screen left and right touch areas to rotate the cube's face.
+- **Core logic**:
+    - Does not render in desktop viewports using the `useWindowSize` hook.
+    - Calls `changeFaceAtom` to trigger a cube face change.
+    - **Now displayed as translucent neon-style vertical bars on the left and right of the screen so that the user can clearly recognize them. Each bar contains '<', '>' icons and has a glowing effect when tapped.**
+    - Applies a 300ms debounce to touch/click events to prevent multiple actions from being triggered by a single tap.
+- **Dependencies**: `react`, `jotai`, `gameAtoms.ts`, `useWindowSize.ts`.
 
 ### `src/components/InstructionOverlay.tsx`
-- **주요 역할**: 게임 방법, 조작법, 승리 조건을 설명하는 오버레이 컴포넌트입니다.
-- **핵심 로직**:
-    - `StartScreen`에 있는 '?' 버튼을 통해 활성화됩니다.
-    - `useWindowSize` 훅을 사용하여 모바일와 데스크탑에 각기 다른 레이아웃을 보여줍니다. (모바일: 세로 스크롤, 데스크탑: 고정 대시보드)
-    - 부드러운 fade-in 효과를 위한 CSS 애니메이션을 포함합니다.
-- **의존성**: `react`, `useWindowSize.ts`.
+- **Main role**: An overlay component that explains how to play, the controls, and the winning conditions.
+- **Core logic**:
+    - Activated by the '?' button on the `StartScreen`.
+    - Uses the `useWindowSize` hook to show different layouts for mobile and desktop. (Mobile: vertical scroll, Desktop: fixed dashboard)
+    - Includes CSS animations for a smooth fade-in effect.
+- **Dependencies**: `react`, `useWindowSize.ts`.
+
+### `src/components/HelpButton.tsx` and `HelpButton.css` (New)
+- **Main role**: A reusable help button component with a neon glow effect.
+- **Core logic**:
+    - The button is a simple `?` with CSS animations to make it "pop".
+    - It takes an `onClick` handler to toggle the `InstructionOverlay`.
 
 ### `src/components/MobileSettingsHUD.tsx`
-- **주요 역할**: **모바일 전용**으로, 화면 좌측 상단에 설정(톱니바퀴) 아이콘을 표시합니다.
-- **핵심 로직**:
-    - `useWindowSize` 훅을 사용하여 데스크탑 뷰포트에서는 렌더링되지 않습니다.
-    - 설정 아이콘을 탭하면 **Focus Mode**와 **Ghost Mode**를 켜고 끌 수 있는 메뉴가 나타납니다.
-    - `toggleFocusModeAtom`과 `toggleGhostAtom`을 호출하여 관련 게임 상태를 변경합니다.
-    - `safe-area-inset`과 `dvh` 단위를 고려한 CSS로 모바일 화면에 안전하게 배치됩니다.
-- **의존성**: `react`, `jotai`, `gameAtoms.ts`, `useWindowSize.ts`.
+- **Main role**: Displays a settings (gear) icon in the top-left corner of the screen, **for mobile only**.
+- **Core logic**:
+    - Does not render in desktop viewports using the `useWindowSize` hook.
+    - Tapping the settings icon reveals a menu to toggle **Focus Mode** and **Ghost Mode**.
+    - Calls `toggleFocusModeAtom` and `toggleGhostAtom` to change the relevant game states.
+    - Safely positioned on the mobile screen considering `safe-area-inset` and `dvh` units in CSS.
+- **Dependencies**: `react`, `jotai`, `gameAtoms.ts`, `useWindowSize.ts`.
 
 ### `src/components/MobileHUD.tsx`
-- **주요 역할**: **모바일 전용**으로, 게임 정보(점수, 레벨 등)를 표시하는 HUD입니다.
-- **핵심 로직**:
-    - `useWindowSize` 훅을 사용하여 데스크탑 뷰포트에서는 렌더링되지 않습니다.
-    - **'i' 버튼을 누르고 있는 동안에만(`press-and-hold`) `NextBlockPreview`를 포함한 추가 정보를 표시합니다.**
-    - `isGameStarted`가 `false`이면 렌더링되지 않아 `StartScreen`과의 상호작용 충돌을 방지합니다.
-- **의존성**: `react`, `jotai`, `gameAtoms.ts`, `NextBlockPreview.tsx`, `useWindowSize.ts`.
+- **Main role**: A HUD that displays game information (score, level, etc.), **for mobile only**.
+- **Core logic**:
+    - Does not render in desktop viewports using the `useWindowSize` hook.
+    - **Displays additional information, including `NextBlockPreview`, only while the 'i' button is being pressed and held (`press-and-hold`).**
+    - Does not render if `isGameStarted` is `false` to prevent interaction conflicts with `StartScreen`.
+- **Dependencies**: `react`, `jotai`, `gameAtoms.ts`, `NextBlockPreview.tsx`, `useWindowSize.ts`.
 
 ### `src/components/DesktopDashboard.tsx`
-- **주요 역할**: **데스크탑 전용**으로, 게임 정보, 다음 블록, 조작법을 항상 표시하는 영구적인 대시보드입니다.
-- **핵심 로직**:
-    - `useWindowSize` 훅을 사용하여 모바일 뷰포트에서는 렌더링되지 않습니다.
-    - 화면 좌우에 패널을 배치하여 게임 정보를 표시합니다.
-- **의존성**: `react`, `jotai`, `gameAtoms.ts`, `NextBlockPreview.tsx`, `KeyHints.tsx`, `useWindowSize.ts`.
+- **Main role**: A permanent dashboard that always displays game information, the next block, and controls, **for desktop only**.
+- **Core logic**:
+    - Does not render in mobile viewports using the `useWindowSize` hook.
+    - Places panels on the left and right of the screen to display game information.
+- **Dependencies**: `react`, `jotai`, `gameAtoms.ts`, `NextBlockPreview.tsx`, `KeyHints.tsx`, `useWindowSize.ts`.
 
 ### `src/components/NextBlockPreview.tsx`
-- **주요 역할**: 다음 테트리스 블록을 3D로 렌더링하는 재사용 가능한 컴포넌트입니다.
-- **사용처**: `MobileHUD`와 `DesktopDashboard`에서 모두 사용됩니다.
-- **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`.
+- **Main role**: A reusable component that renders the next Tetris block in 3D.
+- **Usage**: Used in both `MobileHUD` and `DesktopDashboard`.
+- **Dependencies**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`.
 
-### `src/components/StartScreen.tsx` (Updated: Adaptive Restart Messaging)
-- **주요 역할**: 게임 시작 화면을 표시합니다. 이제 게임 재시작 화면으로도 사용됩니다.
-- **핵심 로직**:
-    - `startGameAtom`을 호출하여 게임을 시작하거나 재시작합니다.
-    - `useIsMobile` 훅을 사용하여 장치 유형에 따라 "PRESS SPACE TO RESTART" 또는 "TOUCH SCREEN TO RESTART" 메시지를 조건부로 렌더링합니다.
-    - **화면 우측 상단에 '?' 아이콘(도움말 버튼)을 포함합니다. 이 버튼을 클릭하면 `InstructionOverlay`가 나타나 게임 방법을 안내합니다.**
-- **의존성**: `jotai` (`isGameStartedAtom`, `startGameAtom`), `useIsMobile`, `InstructionOverlay`.
+### `src/components/StartScreen.tsx` (Updated: UI/UX)
+- **Main role**: Displays the game start screen.
+- **Core logic**:
+    - Calls `startGameAtom` to start or restart the game.
+    - Uses the `useIsMobile` hook to conditionally render "PRESS SPACE TO START" or "TOUCH SCREEN TO START" messages depending on the device type.
+    - **Includes the new `HelpButton` component to show the `InstructionOverlay`.**
+- **Dependencies**: `jotai` (`isGameStartedAtom`, `startGameAtom`), `useIsMobile`, `InstructionOverlay`, `HelpButton`.
 
-### `src/components/GameOverUI.tsx` (New: Game Over Display)
-- **주요 역할**: 게임 종료 시 "GAME OVER" 메시지와 재시작 옵션을 표시하는 컴포넌트입니다.
-- **핵심 로직**:
-    - `onRestart` prop을 받아 게임 재시작 로직을 트리거합니다.
-    - `useIsMobile` 훅을 사용하여 장치 유형에 따라 "PRESS SPACE TO RESTART" 또는 "TOUCH SCREEN TO RESTART" 메시지를 조건부로 렌더링합니다.
-    - `App.tsx`에서 `isGameOver` 상태에 따라 조건부로 렌더링됩니다.
-- **의존성**: `useIsMobile`.
+### `src/components/GameOverUI.tsx` (Updated: UI/UX)
+- **Main role**: A component that displays the "GAME OVER" message and restart options when the game ends.
+- **Core logic**:
+    - Receives an `onRestart` prop to trigger the game restart logic.
+    - Uses the `useIsMobile` hook to conditionally render "PRESS SPACE TO RESTART" or "TOUCH SCREEN TO RESTART" messages depending on the device type.
+    - **Includes the new `HelpButton` component to show the `InstructionOverlay`.**
+- **Dependencies**: `useIsMobile`, `HelpButton`, `InstructionOverlay`.
 
-### `src/engine/grid.ts` (Updated: Continuous Grid Logic)
-- **주요 역할**: 그리드 생성, 충돌 검사 등 상태와 무관한 순수 함수들을 포함하는 유틸리티 파일입니다.
-- **핵심 로직**:
-    - **`isValidMove(grids, activeFace, block, newPosition)`**: 완전히 새로운 충돌 검사 로직을 구현합니다.
-        - **인수**: 이제 단일 그리드가 아닌 **전체 `grids` 배열**과 현재 `activeFace`를 받습니다.
-        - **경계 검사**: 블록이 그리드 왼쪽 (`x < 0`) 또는 오른쪽 (`x >= GRID_WIDTH`) 경계를 넘어서면, 인접한 면(face)으로 넘어간 것으로 간주합니다.
-        - **연속 공간**: 왼쪽 경계를 넘으면 `(activeFace - 1)`번 면의 오른쪽 끝에서 나타나고, 오른쪽 경계를 넘으면 `(activeFace + 1)`번 면의 왼쪽 끝에서 나타나는 것처럼 좌표를 계산하여 충돌을 검사합니다.
-        - **반환값**: 현재 면, 또는 인접한 면에 블록이 놓일 수 있으면 `true`를 반환합니다.
+### `src/engine/grid.ts` (Updated: Shared-Edge Logic)
+- **Main role**: A utility file containing pure functions independent of state, such as grid creation and collision detection.
+- **Core logic**:
+    - **`isValidMove(grids, activeFace, block, newPosition)`**:
+        - **Shared-Edge Logic**: The collision detection now treats the edges of the faces as shared space. If a block is on an edge, it checks for collisions on both the current and the adjacent face.
+- **Dependencies**: `TetrisBlock`.
 
-### `src/atoms/gameAtoms.ts` (Updated: Cross-Face Interaction Logic)
-- **주요 역할**: 게임의 모든 상태와 관련 액션을 원자(atom) 단위로 정의합니다.
-- **핵심 atom 변경 사항**:
-    - **`moveBlockAtom`**:
-        - `isValidMove` 호출 시 `grids`와 `activeFace`를 전달하여 새로운 충돌 로직을 사용합니다.
-        - 블록이 좌우 경계를 성공적으로 넘어가면, `activeFace`를 업데이트하고 블록의 `x` 좌표를 새로운 면에 맞게 "wrap-around" 시킵니다.
-    - **`rotateBlockAtom`**:
-        - **"Wall Kick" 구현**: 회전이 기본 위치에서 유효하지 않을 경우, 블록을 좌우로 1-2칸씩 밀어보는 "kick" 로직을 시도합니다. 이를 통해 벽이나 다른 블록 근처에서 회전이 더 부드럽게 느껴집니다.
-        - 모든 "kick" 시도에서 `isValidMove`를 사용하여 연속된 공간에서의 유효성을 검사합니다.
-    - **`changeFaceAtom`**:
-        - **회전 유효성 검사**: 면을 바꾸기 **전**에, 현재 블록이 **새로운 면**에서 유효한 위치에 있는지 `isValidMove`로 확인합니다. 만약 블록이 새 면의 기존 블록과 겹치면, 면 변경이 취소됩니다.
-    - **`placeBlockAtom`**:
-        - **Corner Stacking 구현**: 블록을 그리드에 놓을 때, 블록의 각 부분이 경계를 넘었는지 확인합니다.
-        - 만약 블록의 일부가 인접 면으로 넘어갔다면, 해당 부분은 인접 면의 그리드에, 나머지는 현재 면의 그리드에 저장됩니다. 이로써 두 면의 경계에 걸쳐 블록이 쌓이는 "코너 스태킹"이 가능해집니다.
-    - **`dropBlockAtom`**: `isValidMove` 호출 방식이 새로운 시그니처에 맞게 업데이트되었습니다.
+## 3. Core Logic Flow (Data Flow with Jotai)
 
-## 3. 핵심 로직 흐름 (Data Flow with Jotai)
+The Jotai architecture manages state through a network of distributed atoms. The UI is designed to be responsive.
 
-Jotai 아키텍처는 분산된 atom들의 네트워크를 통해 상태를 관리합니다. UI는 반응형으로 설계되었습니다.
+1.  **State Definition (`gameAtoms.ts`)**: All game states (`grids`, `score`, `isFastDroppingAtom`, `isFocusModeAtom`, `showGhostAtom`, etc.) exist as independent `atom`s. Now `isGameOverAtom` manages the game over state, and `startGameAtom` correctly initializes the state when the game starts or restarts.
 
-1.  **상태 정의 (`gameAtoms.ts`)**: 게임의 모든 상태(`grids`, `score`, `isFastDroppingAtom`, `isFocusModeAtom`, `showGhostAtom` 등)가 독립적인 `atom`으로 존재합니다. 이제 `isGameOverAtom`이 게임 종료 상태를 관리하며, `startGameAtom`은 게임 시작 및 재시작 시 상태를 올바르게 초기화합니다.
+2.  **UI Rendering (Responsive)**:
+    - The `useWindowSize` hook detects the screen size.
+    - On desktop sizes (`>=1024px`), `DesktopDashboard` is rendered to show a permanent information panel. `MobileHUD`, `MobileControls`, `MobileSettingsHUD` are hidden.
+    - On mobile sizes (`<1024px`), `MobileHUD` (shows information while the 'i' button is pressed), `MobileControls` (left and right touch areas), `MobileSettingsHUD` (settings menu) are rendered. `DesktopDashboard` is hidden.
+    - `App.tsx` conditionally renders `StartScreen`, `GameOverUI`, or the actual game UI based on the `isGameStarted` and `isGameOver` states.
 
-2.  **UI 렌더링 (Responsive)**:
-    - `useWindowSize` 훅이 화면 크기를 감지합니다.
-    - 데스크탑 크기(`>=1024px`)에서는 `DesktopDashboard`가 렌더링되어 영구적인 정보 패널을 보여줍니다. `MobileHUD`, `MobileControls`, `MobileSettingsHUD`는 숨겨집니다.
-    - 모바일 크기(`<1024px`)에서는 `MobileHUD`('i' 버튼을 누르는 동안 정보 표시), `MobileControls`(좌우 터치 영역), `MobileSettingsHUD`(설정 메뉴)가 렌더링됩니다. `DesktopDashboard`는 숨겨집니다.
-    - `App.tsx`는 `isGameStarted`와 `isGameOver` 상태에 따라 `StartScreen`, `GameOverUI`, 또는 실제 게임 UI를 조건부로 렌더링합니다.
+3.  **Action Execution (`GameController`, `useGameActions`, etc.)**:
+    - **Keyboard Input (`GameController`)**: Directly calls atoms like `moveBlockAtom`, `rotateBlockAtom`, etc. based on `keydown` events.
+    - **Touch Input (`GameBoard3D` -> `useGameActions`)**: Touch events on `GameBoard3D` are delegated to the `useGameActions` hook. This hook analyzes gestures (tap, long press, swipe) to update states like `moveBlockAtom`, `rotateBlockAtom`, `isFastDroppingAtom`, etc.
+    - `MobileControls` calls `changeFaceAtom` to rotate the view.
+    - `MobileSettingsHUD` calls `toggleFocusModeAtom` and `toggleGhostAtom` to change game settings.
+    - `StartScreen` and `GameOverUI` call `startGameAtom` to start or restart the game based on user input.
 
-3.  **액션 실행 (`GameController`, `useGameActions` 등)**:
-    - **키보드 입력 (`GameController`)**: `keydown` 이벤트에 따라 `moveBlockAtom`, `rotateBlockAtom` 등의 atom을 직접 호출합니다.
-    - **터치 입력 (`GameBoard3D` -> `useGameActions`)**: `GameBoard3D`의 터치 이벤트는 `useGameActions` 훅으로 위임됩니다. 이 훅은 제스처(탭, 롱 프레스, 스와이프)를 분석하여 `moveBlockAtom`, `rotateBlockAtom`, `isFastDroppingAtom` 등의 상태를 업데이트합니다.
-    - `MobileControls`는 `changeFaceAtom`을 호출하여 뷰를 회전시킵니다.
-    - `MobileSettingsHUD`는 `toggleFocusModeAtom`과 `toggleGhostAtom`을 호출하여 게임 설정을 변경합니다.
-    - `StartScreen`과 `GameOverUI`는 사용자의 입력에 따라 `startGameAtom`을 호출하여 게임을 시작하거나 재시작합니다.
-
-4.  **상태 전파 및 리렌더링**:
-    - `scoreAtom`의 상태가 변경되면, 이 atom을 구독하는 `DesktopDashboard` 또는 `MobileHUD` 컴포넌트의 점수 표시 부분만 리렌더링됩니다.
-    - `isFastDroppingAtom`이 `true`가 되면 `GameController`의 게임 루프가 더 빠른 속도로 재시작됩니다.
-    - `isGameStartedAtom` 또는 `isGameOverAtom`의 변경은 `App.tsx`의 최상위 조건부 렌더링에 영향을 미쳐 `StartScreen`, `GameOverUI`, 또는 게임 화면으로 전환되도록 합니다.
-    - 상태 변경이 발생한 atom을 구독하는 컴포넌트만 정확히 리렌더링되므로, 불필요한 렌더링이 최소화됩니다.
+4.  **State Propagation and Rerendering**:
+    - When the state of `scoreAtom` changes, only the score display part of the `DesktopDashboard` or `MobileHUD` component that subscribes to this atom is rerendered.
+    - When `isFastDroppingAtom` becomes `true`, the game loop in `GameController` restarts at a faster speed.
+    - A change in `isGameStartedAtom` or `isGameOverAtom` affects the top-level conditional rendering in `App.tsx`, causing a switch to the `StartScreen`, `GameOverUI`, or the game screen.
+    - Only the components that subscribe to the atom whose state has changed are accurately rerendered, thus minimizing unnecessary rendering.

@@ -65,12 +65,16 @@ export class TetrisBlock {
   color: string;
   position: { x: number; y: number };
   type: TetrominoKey;
+  width: number;
+  height: number;
 
   constructor(type: TetrominoKey) {
     this.type = type;
     this.shape = TETROMINOS[type].shape;
     this.color = TETROMINOS[type].color;
     this.position = { x: 3, y: 0 }; // Initial position
+    this.width = this.shape.length > 0 ? this.shape[0].length : 0;
+    this.height = this.shape.length;
   }
 
   rotate() {
@@ -79,5 +83,7 @@ export class TetrisBlock {
       this.shape.map((row) => row[colIndex])
     );
     this.shape = newShape.map((row) => row.reverse());
+    this.width = this.shape.length > 0 ? this.shape[0].length : 0;
+    this.height = this.shape.length;
   }
 }
