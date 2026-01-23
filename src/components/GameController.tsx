@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   isGameOverAtom,
@@ -42,11 +42,6 @@ const GameController = () => {
     const isLocking = useAtomValue(isLockingAtom);
     const isFastDropping = useAtomValue(isFastDroppingAtom);
   
-    // Refs to hold timer IDs for DAS and ARR
-    const moveTimers = useRef<{
-      [key: string]: { das?: number; arr?: number };
-    }>({});
-  
     // Start the game on mount
     useEffect(() => {
       startGame();
@@ -88,6 +83,10 @@ const GameController = () => {
 
   // Keyboard controls with DAS
   useEffect(() => {
+    const moveTimers = {
+      current: {} as { [key: string]: { das?: number; arr?: number } },
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Using event.code bypasses issues with IME (e.g., Korean input) and
       // makes the controls dependent on the physical key location.
@@ -122,7 +121,7 @@ const GameController = () => {
       switch (e.code) {
         case "ArrowLeft":
         case "ArrowRight":
-        case "ArrowDown":
+        case "ArrowDown": {
           moveAction(e.code); // Initial move on first press
           const dasTimer = window.setTimeout(() => {
             // If key was released before the DAS timeout finished, do nothing.
@@ -137,6 +136,7 @@ const GameController = () => {
           }, DAS_DELAY);
           moveTimers.current[e.code] = { das: dasTimer }; // Store timeout timer
           break;
+        }
         case "ArrowUp":
           rotateBlock();
           break;
@@ -181,15 +181,17 @@ const GameController = () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
       // Clear all timers on unmount
-      Object.keys(moveTimers.current).forEach((key) => {
-        if (moveTimers.current[key]?.das)
-          window.clearTimeout(moveTimers.current[key].das!);
-        if (moveTimers.current[key]?.arr)
-          window.clearInterval(moveTimers.current[key].arr!);
+      const timers = moveTimers.current;
+      Object.keys(timers).forEach((key) => {
+        if (timers[key]?.das)
+          window.clearTimeout(timers[key].das!);
+        if (timers[key]?.arr)
+          window.clearInterval(timers[key].arr!);
       });
     };
   }, [
     isGameOver,
+    isInputLocked,
     myFaces,
     activeFace,
     moveBlock,

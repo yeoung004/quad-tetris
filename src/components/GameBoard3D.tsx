@@ -303,13 +303,13 @@ const GameScene = () => {
 
   const calculateGhostPosition = useMemo(() => {
     if (!currentBlock || !showGhost) return null;
-    const grid = grids[activeFace];
     let ghostY = currentBlock.position.y;
     const ghostBlockInstance = new TetrisBlock(currentBlock.type);
     ghostBlockInstance.shape = currentBlock.shape;
 
+    // Use the new isValidMove signature
     while (
-      isValidMove(grid, ghostBlockInstance, {
+      isValidMove(grids, activeFace, ghostBlockInstance, {
         x: currentBlock.position.x,
         y: ghostY + 1,
       })

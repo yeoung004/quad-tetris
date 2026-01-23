@@ -180,8 +180,30 @@
     - `App.tsx`에서 `isGameOver` 상태에 따라 조건부로 렌더링됩니다.
 - **의존성**: `useIsMobile`.
 
-### `src/engine/grid.ts`
+### `src/engine/grid.ts` (Updated: Continuous Grid Logic)
 - **주요 역할**: 그리드 생성, 충돌 검사 등 상태와 무관한 순수 함수들을 포함하는 유틸리티 파일입니다.
+- **핵심 로직**:
+    - **`isValidMove(grids, activeFace, block, newPosition)`**: 완전히 새로운 충돌 검사 로직을 구현합니다.
+        - **인수**: 이제 단일 그리드가 아닌 **전체 `grids` 배열**과 현재 `activeFace`를 받습니다.
+        - **경계 검사**: 블록이 그리드 왼쪽 (`x < 0`) 또는 오른쪽 (`x >= GRID_WIDTH`) 경계를 넘어서면, 인접한 면(face)으로 넘어간 것으로 간주합니다.
+        - **연속 공간**: 왼쪽 경계를 넘으면 `(activeFace - 1)`번 면의 오른쪽 끝에서 나타나고, 오른쪽 경계를 넘으면 `(activeFace + 1)`번 면의 왼쪽 끝에서 나타나는 것처럼 좌표를 계산하여 충돌을 검사합니다.
+        - **반환값**: 현재 면, 또는 인접한 면에 블록이 놓일 수 있으면 `true`를 반환합니다.
+
+### `src/atoms/gameAtoms.ts` (Updated: Cross-Face Interaction Logic)
+- **주요 역할**: 게임의 모든 상태와 관련 액션을 원자(atom) 단위로 정의합니다.
+- **핵심 atom 변경 사항**:
+    - **`moveBlockAtom`**:
+        - `isValidMove` 호출 시 `grids`와 `activeFace`를 전달하여 새로운 충돌 로직을 사용합니다.
+        - 블록이 좌우 경계를 성공적으로 넘어가면, `activeFace`를 업데이트하고 블록의 `x` 좌표를 새로운 면에 맞게 "wrap-around" 시킵니다.
+    - **`rotateBlockAtom`**:
+        - **"Wall Kick" 구현**: 회전이 기본 위치에서 유효하지 않을 경우, 블록을 좌우로 1-2칸씩 밀어보는 "kick" 로직을 시도합니다. 이를 통해 벽이나 다른 블록 근처에서 회전이 더 부드럽게 느껴집니다.
+        - 모든 "kick" 시도에서 `isValidMove`를 사용하여 연속된 공간에서의 유효성을 검사합니다.
+    - **`changeFaceAtom`**:
+        - **회전 유효성 검사**: 면을 바꾸기 **전**에, 현재 블록이 **새로운 면**에서 유효한 위치에 있는지 `isValidMove`로 확인합니다. 만약 블록이 새 면의 기존 블록과 겹치면, 면 변경이 취소됩니다.
+    - **`placeBlockAtom`**:
+        - **Corner Stacking 구현**: 블록을 그리드에 놓을 때, 블록의 각 부분이 경계를 넘었는지 확인합니다.
+        - 만약 블록의 일부가 인접 면으로 넘어갔다면, 해당 부분은 인접 면의 그리드에, 나머지는 현재 면의 그리드에 저장됩니다. 이로써 두 면의 경계에 걸쳐 블록이 쌓이는 "코너 스태킹"이 가능해집니다.
+    - **`dropBlockAtom`**: `isValidMove` 호출 방식이 새로운 시그니처에 맞게 업데이트되었습니다.
 
 ## 3. 핵심 로직 흐름 (Data Flow with Jotai)
 

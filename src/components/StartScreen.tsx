@@ -1,6 +1,6 @@
 import { useSetAtom } from "jotai";
 import { isGameStartedAtom, startGameAtom } from "../atoms/gameAtoms";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import InstructionOverlay from "./InstructionOverlay";
 import { useIsMobile } from "../hooks/useIsMobile"; // Import the custom hook
 
@@ -10,10 +10,10 @@ const StartScreen = () => {
   const isMobile = useIsMobile(); // Use the custom hook
   const [showInstructions, setShowInstructions] = useState(false); // State for overlay
 
-  const handleStart = () => {
+  const handleStart = useCallback(() => {
     setIsGameStarted(true);
     startGame();
-  };
+  }, [setIsGameStarted, startGame]);
 
   const toggleInstructions = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation(); // Prevent the main container's click/touch handler
@@ -29,7 +29,7 @@ const StartScreen = () => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showInstructions]); // Rerun if overlay state changes
+  }, [showInstructions, handleStart]); // Rerun if overlay state changes
 
   return (
     <>

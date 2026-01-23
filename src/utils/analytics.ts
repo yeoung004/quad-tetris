@@ -15,7 +15,7 @@ export const trackPageView = (path: string) => {
   }
 };
 
-export const trackEvent = (name: string, params?: { [key: string]: any }) => {
+export const trackEvent = (name: string, params?: Record<string, string | number | boolean | undefined | null>) => {
   if (GA_MEASUREMENT_ID && process.env.NODE_ENV === 'production') {
     ReactGA.event(name, params);
   }

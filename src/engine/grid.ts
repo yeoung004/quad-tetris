@@ -2,6 +2,7 @@ import { TetrisBlock } from "./TetrisBlock";
 
 export const GRID_WIDTH = 10;
 export const GRID_HEIGHT = 20;
+export const NUM_FACES = 4;
 
 export const createEmptyGrid = (): (string | number)[][] =>
   Array(GRID_HEIGHT)
@@ -9,7 +10,8 @@ export const createEmptyGrid = (): (string | number)[][] =>
     .map(() => Array(GRID_WIDTH).fill(0));
 
 export function isValidMove(
-  grid: (string | number)[][],
+  grids: (string | number)[][][],
+  activeFace: number,
   block: TetrisBlock,
   newPosition: { x: number; y: number }
 ): boolean {
@@ -19,13 +21,34 @@ export function isValidMove(
         const newX = newPosition.x + x;
         const newY = newPosition.y + y;
 
-        if (newX < 0 || newX >= GRID_WIDTH || newY >= GRID_HEIGHT) {
-          return false;
+        // Y bounds check (vertical)
+        if (newY >= GRID_HEIGHT) {
+          return false; // Hit the floor
         }
 
+        // X bounds check (horizontal) and cross-face logic
+        let face = activeFace;
+        let checkX = newX;
+
+        if (newX < 0) {
+          // Moved past the left edge
+          face = (activeFace - 1 + NUM_FACES) % NUM_FACES;
+          checkX = newX + GRID_WIDTH;
+        } else if (newX >= GRID_WIDTH) {
+          // Moved past the right edge
+          face = (activeFace + 1) % NUM_FACES;
+          checkX = newX - GRID_WIDTH;
+        }
+
+        // Collision check on the potentially new face
         if (newY >= 0) {
-          if (grid[newY][newX] !== 0) {
-            return false;
+          const gridToCheck = grids[face];
+          if (
+            gridToCheck && // Ensure grid exists
+            gridToCheck[newY] && // Ensure row exists
+            gridToCheck[newY][checkX] !== 0
+          ) {
+            return false; // Collision with an existing block
           }
         }
       }

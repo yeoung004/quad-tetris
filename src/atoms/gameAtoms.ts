@@ -129,6 +129,8 @@ export const moveBlockAtom = atom(
     const currentBlock = get(currentBlockAtom);
     const isGameOver = get(isGameOverAtom);
     const isInputLocked = get(isInputLockedAtom);
+    const grids = get(gridsAtom);
+    const activeFace = get(activeFaceAtom);
 
     if (isGameOver || isInputLocked || !currentBlock) return;
 
@@ -140,22 +142,28 @@ export const moveBlockAtom = atom(
     const nextBlock = new TetrisBlock(currentBlock.type);
     nextBlock.position = newPos;
     nextBlock.shape = currentBlock.shape;
+    
+    // The core logic change is here. We now pass the whole world state to isValidMove.
+    if (isValidMove(grids, activeFace, nextBlock, newPos)) {
+      // If the move is valid, we might need to wrap the block and change face
+      let newActiveFace = activeFace;
+      if (newPos.x < 0) {
+        // Moved past the left edge
+        newActiveFace = (activeFace - 1 + 4) % 4;
+        nextBlock.position.x = GRID_WIDTH + newPos.x;
+      } else if (newPos.x >= GRID_WIDTH) {
+        // Moved past the right edge
+        newActiveFace = (activeFace + 1) % 4;
+        nextBlock.position.x = newPos.x - GRID_WIDTH;
+      }
 
-    const currentGrid = get(currentGridAtom);
-
-    if (!isValidMove(currentGrid, currentBlock, currentBlock.position)) {
-      set(isGameOverAtom, true);
-      set(gameOverMessageAtom, "GAME OVER");
-      // We might want to set the block to null to make the collision more visible
-      set(currentBlockAtom, null);
-      trackEvent('game_over', { score: get(scoreAtom), level: get(levelAtom) }); // Track game over
-      return; // Stop execution to prevent face change
-    }
-
-    if (isValidMove(currentGrid, nextBlock, newPos)) {
       set(currentBlockAtom, nextBlock);
+      if (newActiveFace !== activeFace) {
+        set(activeFaceAtom, newActiveFace);
+      }
       set(isLockingAtom, false);
     } else if (dy === 1) {
+      // If it's an invalid downward move, lock the piece.
       set(isLockingAtom, true);
     }
   }
@@ -163,17 +171,34 @@ export const moveBlockAtom = atom(
 
 export const rotateBlockAtom = atom(null, (get, set) => {
   const currentBlock = get(currentBlockAtom);
+  const grids = get(gridsAtom);
+  const activeFace = get(activeFaceAtom);
+
   if (get(isGameOverAtom) || get(isInputLockedAtom) || !currentBlock) return;
 
   const rotatedBlock = new TetrisBlock(currentBlock.type);
-  rotatedBlock.position = currentBlock.position;
-  rotatedBlock.shape = [...currentBlock.shape];
-  rotatedBlock.rotate();
+  rotatedBlock.shape = currentBlock.shape; // Start with current shape
+  rotatedBlock.rotate(); // Rotate the shape
+  rotatedBlock.position = currentBlock.position; // Keep original position for now
 
-  if (isValidMove(get(currentGridAtom), rotatedBlock, rotatedBlock.position)) {
-    set(currentBlockAtom, rotatedBlock);
-    set(isLockingAtom, false);
+  // Test wall kicks (standard Tetris behavior)
+  const testPositions = [
+    rotatedBlock.position, // 0: No kick
+    { x: rotatedBlock.position.x - 1, y: rotatedBlock.position.y }, // 1: Kick left
+    { x: rotatedBlock.position.x + 1, y: rotatedBlock.position.y }, // 2: Kick right
+    { x: rotatedBlock.position.x - 2, y: rotatedBlock.position.y }, // 3: Kick left 2
+    { x: rotatedBlock.position.x + 2, y: rotatedBlock.position.y }, // 4: Kick right 2
+  ];
+
+  for (const testPos of testPositions) {
+    if (isValidMove(grids, activeFace, rotatedBlock, testPos)) {
+      rotatedBlock.position = testPos; // It's a valid move, update position
+      set(currentBlockAtom, rotatedBlock);
+      set(isLockingAtom, false);
+      return; // Found a valid rotation, exit
+    }
   }
+  // If no valid rotation was found after all kicks, do nothing.
 });
 
 export const changeFaceAtom = atom(
@@ -193,8 +218,12 @@ export const changeFaceAtom = atom(
     }
     const newActiveFace = myFaces[currentIndex];
 
-    set(activeFaceAtom, newActiveFace);
-    trackEvent('face_change', { face_index: newActiveFace });
+    // Validate the current block's position on the NEW face before committing.
+    if (isValidMove(get(gridsAtom), newActiveFace, currentBlock, currentBlock.position)) {
+      set(activeFaceAtom, newActiveFace);
+      trackEvent('face_change', { face_index: newActiveFace });
+    }
+    // If the move is invalid, do nothing, preventing the face change.
   }
 );
 
@@ -206,33 +235,45 @@ export const placeBlockAtom = atom(null, (get, set) => {
   const grids = get(gridsAtom);
   const { x: blockX, y: blockY } = currentBlock.position;
 
-  const newGrid = grids[activeFace].map((row) => [...row]);
+  // Create a mutable copy of all grids
+  const newGrids = grids.map(grid => grid.map(row => [...row]));
 
   currentBlock.shape.forEach((row, y) => {
     row.forEach((cell, x) => {
       if (cell !== 0) {
-        const gridX = blockX + x;
         const gridY = blockY + y;
+        const gridX = blockX + x;
+
+        let targetFace = activeFace;
+        let targetX = gridX;
+
+        if (gridX < 0) {
+          targetFace = (activeFace - 1 + 4) % 4;
+          targetX = gridX + GRID_WIDTH;
+        } else if (gridX >= GRID_WIDTH) {
+          targetFace = (activeFace + 1) % 4;
+          targetX = gridX - GRID_WIDTH;
+        }
+
         if (
           gridY >= 0 &&
           gridY < GRID_HEIGHT &&
-          gridX >= 0 &&
-          gridX < GRID_WIDTH
+          targetX >= 0 &&
+          targetX < GRID_WIDTH
         ) {
-          newGrid[gridY][gridX] = currentBlock.type;
+          newGrids[targetFace][gridY][targetX] = currentBlock.type;
         }
       }
     });
   });
 
-  const newGrids = [...grids];
-  newGrids[activeFace] = newGrid;
-
-  // Line clear logic
+  // Line clear logic (remains the same as it checks all faces)
   let numLinesCleared = 0;
   for (let y = 0; y < GRID_HEIGHT; y++) {
+    // Check if the line is full on ALL faces
     if (newGrids.every((grid) => grid[y].every((cell) => cell !== 0))) {
       numLinesCleared++;
+      // If so, clear the line from ALL faces
       for (let i = 0; i < newGrids.length; i++) {
         newGrids[i].splice(y, 1);
         newGrids[i].unshift(Array(GRID_WIDTH).fill(0));
@@ -250,22 +291,25 @@ export const placeBlockAtom = atom(null, (get, set) => {
       get(scoreAtom) + numLinesCleared * POINTS_PER_LINE * numLinesCleared
     );
     set(levelAtom, Math.floor(newTotalLinesCleared / LINES_PER_LEVEL) + 1);
+     trackEvent('line_clear', { lines: numLinesCleared, level: get(levelAtom) });
   }
 
+  // Spawn new block
   const newCurrentBlock = get(nextBlockAtom) ?? spawnNewBlock();
   set(currentBlockAtom, new TetrisBlock(newCurrentBlock.type));
   set(nextBlockAtom, spawnNewBlock());
   set(isLockingAtom, false);
 
+  // Check for game over with the new block
   const freshCurrentBlock = get(currentBlockAtom)!;
   if (
     !isValidMove(
-      get(currentGridAtom),
+      get(gridsAtom),
+      get(activeFaceAtom),
       freshCurrentBlock,
       freshCurrentBlock.position
     )
   ) {
-    // The new block is the one that's colliding
     set(triggerCollisionWarningAtom, freshCurrentBlock);
   }
 });
@@ -274,10 +318,11 @@ export const dropBlockAtom = atom(null, (get, set) => {
   const currentBlock = get(currentBlockAtom);
   if (get(isGameOverAtom) || !currentBlock) return;
 
-  const grid = get(currentGridAtom);
+  const grids = get(gridsAtom);
+  const activeFace = get(activeFaceAtom);
   let newY = currentBlock.position.y;
   while (
-    isValidMove(grid, currentBlock, { x: currentBlock.position.x, y: newY + 1 })
+    isValidMove(grids, activeFace, currentBlock, { x: currentBlock.position.x, y: newY + 1 })
   ) {
     newY++;
   }
