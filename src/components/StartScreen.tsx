@@ -34,6 +34,8 @@ const StartScreen = () => {
   return (
     <>
       <div
+        role="button"
+        aria-label="Start Game"
         style={{
           position: "absolute",
           top: 0,
@@ -62,6 +64,8 @@ const StartScreen = () => {
 
       {/* Help Button */}
       <div
+        role="button"
+        aria-label="Show Instructions"
         style={{
           position: "absolute",
           top: "2rem",

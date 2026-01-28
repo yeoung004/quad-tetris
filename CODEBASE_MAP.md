@@ -11,6 +11,9 @@
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
+├── public/
+│   ├── robots.txt
+│   └── sitemap.xml
 └── src/
     ├── App.tsx
     ├── main.tsx
@@ -36,7 +39,8 @@
     └── hooks/
         ├── useGameActions.ts
         ├── useWindowSize.ts
-        └── useIsMobile.ts
+        ├── useIsMobile.ts
+        └── useDynamicTitle.ts
 `
 
 ## 2. 파일 분석 (File-by-File Analysis)
@@ -44,6 +48,14 @@
 ### `package.json`
 - **주요 역할**: 프로젝트 의존성을 정의합니다. `jotai`가 상태 관리를 위해 추가되었습니다.
 - **핵심 라이브러리**: `react`, `jotai`, `three`, `@react-three/fiber`.
+
+### `public/robots.txt` (New: SEO)
+- **Role**: Instructs web crawlers on which pages or files the crawler can or can't request from your site.
+- **Key Logic**: Allows all user agents to crawl the entire site. Points to the `sitemap.xml`.
+
+### `public/sitemap.xml` (New: SEO)
+- **Role**: Lists the important pages on the website, making it easier for search engines to find and crawl them.
+- **Key Logic**: Contains a single URL entry for the main page of the application.
 
 ### `src/utils/analytics.ts` (New: Google Analytics 4 Utility)
 - **주요 역할**: Google Analytics 4 (GA4) 이벤트를 추적하기 위한 유틸리티 함수들을 포함합니다.
@@ -58,20 +70,28 @@
 - **주요 역할**: React 애플리케이션의 진입점.
 - **핵심 변경 사항**: `initializeGA()` 함수를 호출하여 애플리케이션 로드 시 GA4를 초기화합니다.
 
-### `index.html` (Updated: Absolute Touch Suppression)
-- **주요 역할**: 애플리케이션의 HTML 골격 및 전역 설정.
-- **핵심 로직 (추가/수정)**:
-    - `body`와 `#root` 요소에 `touch-action: none !important;`, `user-select: none !important;`, `-webkit-user-drag: none !important;`, `-webkit-touch-callout: none !important;` 스타일이 적용되어 모바일 브라우저의 기본 터치 동작(스크롤, 확대, 텍스트 선택, 컨텍스트 메뉴, 드래그)을 전역적으로 비활성화합니다.
-    - `height: 100dvh;`가 `#root`에 적용되어 iOS Safari의 바운스 효과를 방지합니다.
-    - 전역 `touchstart` 및 `touchmove` 이벤트 리스너가 `passive: false` 옵션과 함께 추가되어, `e.preventDefault()`를 통해 모든 기본 터치 제스처(특히 멀티터치 줌)를 강제로 비활성화합니다.
+### `index.html` (Updated: SEO and Metadata)
+- **Role**: Main HTML skeleton and global settings.
+- **Key Logic (Additions/Modifications)**:
+    - **SEO**:
+        - Optimized `<title>` with keywords.
+        - Added `<meta name="description">`.
+        - Implemented Open Graph (OG) tags for social media sharing.
+        - Added Twitter Card tags.
+        - Linked `apple-touch-icon`.
+    - **Structured Data**:
+        - Added a `<script type="application/ld+json">` block with "VideoGame" schema for rich search results.
+    - **Touch Behavior**:
+        - Globally disables touch actions like scrolling, zooming, and text selection for a better game experience on mobile.
 
-### `src/App.tsx` (Updated: Game Over UI Integration)
-- **주요 역할**: 애플리케이션의 최상위 컴포넌트. `isGameStarted` 상태에 따라 `StartScreen`, `GameOverUI`, 또는 주요 게임 컴포넌트들(`GameBoard3D`, `MobileHUD`, `DesktopDashboard`, `MobileSettingsHUD` 등)을 렌더링합니다.
-- **핵심 로직**:
-    - `isGameStarted`가 `false`일 때 `StartScreen`을 렌더링합니다.
-    - `isGameStarted`가 `true`이고 `isGameOver`가 `true`일 때 `GameOverUI`를 렌더링하며, `onRestart` prop을 통해 `startGame` 액션을 전달합니다.
-    - 게임이 시작되었고 종료되지 않았을 때만 실제 게임 UI 컴포넌트들을 렌더링합니다.
-- **의존성**: `jotai` (`isGameStartedAtom`, `isGameOverAtom`, `startGameAtom`), `StartScreen`, `GameOverUI`.
+### `src/App.tsx` (Updated: Dynamic Title)
+- **Role**: The top-level component of the application. It conditionally renders `StartScreen`, `GameOverUI`, or the main game components based on the game state.
+- **Key Logic**:
+    - Uses the new `useDynamicTitle` hook to update the document title based on the game state (e.g., showing the score on the game over screen).
+    - Renders `StartScreen` when the game hasn't started.
+    - Renders `GameOverUI` when the game is over.
+    - Renders the main game components when the game is active.
+- **Dependencies**: `jotai`, `StartScreen`, `GameOverUI`, `useDynamicTitle`.
 
 ### `src/atoms/gameAtoms.ts` (Updated: Game State Initialization)
 - **주요 역할**: 게임의 모든 상태와 관련 액션을 원자(atom) 단위로 정의합니다. 상태와 로직이 한 곳에 모여있습니다.
@@ -81,6 +101,11 @@
     - **Writable Action Atoms**: `startGameAtom`, `moveBlockAtom`, `rotateBlockAtom`, `changeFaceAtom`, `toggleFocusModeAtom`, `toggleGhostAtom` 등.
 - **주요 변경 사항**: `startGameAtom`이 호출될 때 `isGameStartedAtom`을 `true`로 설정하고 `isGameOverAtom`을 `false`로 명시적으로 초기화하여 게임 시작/재시작 시 상태 일관성을 보장합니다.
 - **의존성**: `jotai`.
+
+### `src/hooks/useDynamicTitle.ts` (New: SEO)
+- **Role**: A new custom hook to dynamically update the document's title for SEO and user experience.
+- **Key Logic**: Subscribes to `scoreAtom` and `isGameOverAtom`. When `isGameOver` becomes `true`, it updates the title to "Game Over - Score: [score] | Quad-Tetris". Otherwise, it keeps the default optimized title.
+- **Usage**: Called once in `App.tsx` to manage the title for the entire application lifecycle.
 
 ### `src/hooks/useWindowSize.ts`
 - **주요 역할**: 브라우저 창의 크기가 변경될 때마다 현재 너비와 높이를 반환하는 커스텀 훅입니다.
@@ -164,21 +189,23 @@
 - **사용처**: `MobileHUD`와 `DesktopDashboard`에서 모두 사용됩니다.
 - **의존성**: `react`, `jotai`, `@react-three/fiber`, `gameAtoms.ts`.
 
-### `src/components/StartScreen.tsx` (Updated: Adaptive Restart Messaging)
-- **주요 역할**: 게임 시작 화면을 표시합니다. 이제 게임 재시작 화면으로도 사용됩니다.
-- **핵심 로직**:
-    - `startGameAtom`을 호출하여 게임을 시작하거나 재시작합니다.
-    - `useIsMobile` 훅을 사용하여 장치 유형에 따라 "PRESS SPACE TO RESTART" 또는 "TOUCH SCREEN TO RESTART" 메시지를 조건부로 렌더링합니다.
-    - **화면 우측 상단에 '?' 아이콘(도움말 버튼)을 포함합니다. 이 버튼을 클릭하면 `InstructionOverlay`가 나타나 게임 방법을 안내합니다.**
-- **의존성**: `jotai` (`isGameStartedAtom`, `startGameAtom`), `useIsMobile`, `InstructionOverlay`.
+### `src/components/StartScreen.tsx` (Updated: Accessibility)
+- **Role**: Displays the game start screen.
+- **Key Logic**:
+    - Calls `startGameAtom` to start or restart the game.
+    - Uses `useIsMobile` hook for device-specific messaging.
+    - **Accessibility**: Added `role="button"` and `aria-label` to the main container and help button for screen reader support.
+- **Dependencies**: `jotai`, `useIsMobile`, `InstructionOverlay`.
 
-### `src/components/GameOverUI.tsx` (New: Game Over Display)
-- **주요 역할**: 게임 종료 시 "GAME OVER" 메시지와 재시작 옵션을 표시하는 컴포넌트입니다.
-- **핵심 로직**:
-    - `onRestart` prop을 받아 게임 재시작 로직을 트리거합니다.
-    - `useIsMobile` 훅을 사용하여 장치 유형에 따라 "PRESS SPACE TO RESTART" 또는 "TOUCH SCREEN TO RESTART" 메시지를 조건부로 렌더링합니다.
-    - `App.tsx`에서 `isGameOver` 상태에 따라 조건부로 렌더링됩니다.
-- **의존성**: `useIsMobile`.
+### `src/components/GameOverUI.tsx` (Updated: Accessibility)
+- **Role**: Displays the "GAME OVER" message and restart option.
+- **Key Logic**:
+    - Receives an `onRestart` prop to trigger the restart logic.
+    - Uses `useIsMobile` for device-specific messaging.
+    - **Accessibility**: Added `role="button"` and `aria-label="Restart Game"` for screen reader support.
+    - Conditionally rendered in `App.tsx` based on the `isGameOver` state.
+- **Dependencies**: `useIsMobile`.
+
 
 ### `src/engine/grid.ts`
 - **주요 역할**: 그리드 생성, 충돌 검사 등 상태와 무관한 순수 함수들을 포함하는 유틸리티 파일입니다.
@@ -206,4 +233,5 @@ Jotai 아키텍처는 분산된 atom들의 네트워크를 통해 상태를 관�
     - `scoreAtom`의 상태가 변경되면, 이 atom을 구독하는 `DesktopDashboard` 또는 `MobileHUD` 컴포넌트의 점수 표시 부분만 리렌더링됩니다.
     - `isFastDroppingAtom`이 `true`가 되면 `GameController`의 게임 루프가 더 빠른 속도로 재시작됩니다.
     - `isGameStartedAtom` 또는 `isGameOverAtom`의 변경은 `App.tsx`의 최상위 조건부 렌더링에 영향을 미쳐 `StartScreen`, `GameOverUI`, 또는 게임 화면으로 전환되도록 합니다.
+    - `useDynamicTitle` hook ensures the document title updates automatically when `isGameOver` or `score` changes.
     - 상태 변경이 발생한 atom을 구독하는 컴포넌트만 정확히 리렌더링되므로, 불필요한 렌더링이 최소화됩니다.
