@@ -1,4 +1,4 @@
-import { Box, Edges } from "@react-three/drei";
+import { Edges } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette, Noise } from "@react-three/postprocessing";
 import { useAtomValue } from "jotai";
@@ -129,7 +129,8 @@ const GameBoardBoundary = () => {
 
   return (
     <group>
-      <Box args={[BOARD_WIDTH, BOARD_HEIGHT, BOARD_WIDTH]}>
+      <mesh>
+        <boxGeometry args={[BOARD_WIDTH, BOARD_HEIGHT, BOARD_WIDTH]} />
         <meshBasicMaterial
           transparent
           opacity={isFocusMode ? 0.9 : 0.05}
@@ -137,7 +138,7 @@ const GameBoardBoundary = () => {
           side={THREE.DoubleSide}
         />
         <Edges threshold={15} color="#00ffff" />
-      </Box>
+      </mesh>
 
       <group rotation={[0, activeFace * (Math.PI / 2), 0]}>{gridLines}</group>
     </group>
@@ -153,7 +154,8 @@ const TetrisBlock3D = ({
   color: string;
   opacity?: number;
 }) => (
-  <Box args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} position={position}>
+  <mesh position={position}>
+    <boxGeometry args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} />
     <meshStandardMaterial
       color={color}
       emissive={color}
@@ -163,7 +165,7 @@ const TetrisBlock3D = ({
       opacity={opacity}
     />
     <Edges threshold={15} color={color} />
-  </Box>
+  </mesh>
 );
 
 const CollisionBlock3D = ({
@@ -181,7 +183,8 @@ const CollisionBlock3D = ({
   });
 
   return (
-    <Box args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} position={position}>
+    <mesh position={position}>
+      <boxGeometry args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} />
       <meshStandardMaterial
         ref={materialRef}
         color={color}
@@ -189,12 +192,13 @@ const CollisionBlock3D = ({
         toneMapped={false}
       />
       <Edges threshold={15} color={color} />
-    </Box>
+    </mesh>
   );
 };
 
 const GhostBlock3D = ({ position }: { position: THREE.Vector3 }) => (
-  <Box args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} position={position}>
+  <mesh position={position}>
+    <boxGeometry args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} />
     <meshBasicMaterial
       color="white"
       transparent
@@ -202,7 +206,7 @@ const GhostBlock3D = ({ position }: { position: THREE.Vector3 }) => (
       toneMapped={false}
     />
     <Edges color="white" />
-  </Box>
+  </mesh>
 );
 
 const GameBoardFace = ({
