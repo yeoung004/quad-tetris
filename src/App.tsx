@@ -9,6 +9,7 @@ import { MobileSettingsHUD } from "./components/MobileSettingsHUD";
 import StartScreen from "./components/StartScreen";
 import DesktopDashboard from "./components/DesktopDashboard";
 import GameOverUI from "./components/GameOverUI"; // Import GameOverUI
+import useDynamicTitle from "./hooks/useDynamicTitle"; // Import the new hook
 import "./components/MobileUI.css";
 import "./components/DesktopDashboard.css";
 import { trackEvent } from './utils/analytics'; // Import trackEvent
@@ -17,6 +18,8 @@ const App: React.FC = () => {
   const isGameStarted = useAtomValue(isGameStartedAtom);
   const isGameOver = useAtomValue(isGameOverAtom); // Get game over state
   const startGame = useSetAtom(startGameAtom); // Get startGame action
+
+  useDynamicTitle(); // Use the hook to dynamically update the title
 
   const handleRestart = () => {
     startGame();
