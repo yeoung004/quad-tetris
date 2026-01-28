@@ -4,7 +4,7 @@ import {
   nextBlockAtom,
 } from "../atoms/gameAtoms";
 import { Canvas } from "@react-three/fiber";
-import { Box, Edges } from "@react-three/drei";
+import { Edges } from "@react-three/drei";
 import { TETROMINOS } from "../engine/TetrisBlock";
 
 // This is the 3D preview, adapted from GameBoard3D.tsx to live inside the HUD
@@ -38,11 +38,11 @@ const NextBlockPreview: React.FC = () => {
                     row.map((cell: string | number, x: number) => {
                         if (cell !== 0) {
                         return (
-                            <Box
+                            <mesh
                             key={`${y}-${x}`}
-                            args={[1, 1, 1]}
                             position={[x + offsetX - 1.5, -(y + offsetY) + 1.5, 0]}
                             >
+                              <boxGeometry args={[1, 1, 1]} />
                             <meshStandardMaterial
                                 color={TETROMINOS[nextBlock.type].color}
                                 emissive={TETROMINOS[nextBlock.type].color}
@@ -50,7 +50,7 @@ const NextBlockPreview: React.FC = () => {
                                 toneMapped={false}
                             />
                             <Edges color={TETROMINOS[nextBlock.type].color} />
-                            </Box>
+                            </mesh>
                         );
                         }
                         return null;
