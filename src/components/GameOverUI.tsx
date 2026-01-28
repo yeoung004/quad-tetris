@@ -13,6 +13,8 @@ const GameOverUI = ({ onRestart }: GameOverUIProps) => {
 
   return (
     <div
+      role="button"
+      aria-label="Restart Game"
       style={{
         position: "absolute",
         top: 0,
